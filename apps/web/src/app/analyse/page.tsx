@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Strategy =
   | "Buy to Let"
@@ -21,6 +21,16 @@ export default function AnalysePage() {
   const [address, setAddress] = useState("");
   const [legalPackName, setLegalPackName] = useState("");
   const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (step === 4) {
+      const timer = setTimeout(() => {
+        setStep(5);
+      }, 2500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
 
   const stepClass = (stepNumber: number) =>
     step === stepNumber
@@ -76,8 +86,8 @@ export default function AnalysePage() {
           <span className={stepClass(3)}>
             {step > 3 ? "✓" : step === 3 ? "●" : "○"} Property
           </span>
-          <span className={stepClass(4)}>
-            {step === 4 ? "●" : "○"} Analyse
+          <span className={step >= 4 ? "font-semibold text-slate-900" : "text-slate-400"}>
+            {step === 5 ? "✓" : "●"} Analyse
           </span>
         </div>
 
@@ -244,6 +254,19 @@ export default function AnalysePage() {
           )}
 
           {step === 4 && (
+            <>
+              <h2 className="text-2xl font-semibold">Analysing property...</h2>
+
+              <div className="mt-6 space-y-4 text-slate-600">
+                <p>✓ Identifying property details</p>
+                <p>✓ Reviewing market indicators</p>
+                <p>✓ Checking potential risks</p>
+                <p>✓ Calculating LotWise Deal Score</p>
+              </div>
+            </>
+          )}
+
+          {step === 5 && (
             <div className="space-y-10">
               <div className="border-b border-slate-200 pb-8">
                 <p className="text-sm uppercase tracking-[0.2em] text-slate-500">
