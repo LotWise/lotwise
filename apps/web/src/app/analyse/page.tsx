@@ -20,6 +20,7 @@ export default function AnalysePage() {
   const [auctionLink, setAuctionLink] = useState("");
   const [address, setAddress] = useState("");
   const [legalPackName, setLegalPackName] = useState("");
+  const [notes, setNotes] = useState("");
 
   const stepClass = (stepNumber: number) =>
     step === stepNumber
@@ -28,9 +29,35 @@ export default function AnalysePage() {
       ? "text-slate-500"
       : "text-slate-400";
 
+  const score = 68;
+  const strategyFit = 78;
+  const investmentQuality = 72;
+  const riskLevel = 55;
+
+  const scoreLabel =
+    score >= 80
+      ? "Strong Opportunity"
+      : score >= 60
+      ? "Promising"
+      : score >= 40
+      ? "Medium Risk"
+      : "High Risk";
+
+  const scoreColor =
+    score >= 80
+      ? "text-green-600"
+      : score >= 60
+      ? "text-amber-500"
+      : score >= 40
+      ? "text-orange-500"
+      : "text-red-600";
+
+  const propertyDisplay =
+    address || auctionLink || "Auction Property Analysis";
+
   return (
     <main className="min-h-screen bg-white text-slate-900">
-      <section className="mx-auto max-w-4xl px-6 py-20">
+      <section className="mx-auto max-w-5xl px-6 py-20">
         <h1 className="text-4xl font-bold tracking-tight">
           Analyse an Auction Property
         </h1>
@@ -217,17 +244,134 @@ export default function AnalysePage() {
           )}
 
           {step === 4 && (
-            <>
-              <h2 className="text-2xl font-semibold">Analysing property...</h2>
+            <div className="space-y-10">
+              <div className="border-b border-slate-200 pb-8">
+                <p className="text-sm uppercase tracking-[0.2em] text-slate-500">
+                  Analysis Report
+                </p>
 
-              <div className="mt-6 space-y-3 text-slate-600">
-                <p>✓ Identifying property details</p>
-                <p>✓ Reviewing market indicators</p>
-                <p>✓ Checking potential risks</p>
-                <p>✓ Calculating LotWise Deal Score</p>
+                <h2 className="mt-3 text-3xl font-bold">{propertyDisplay}</h2>
+
+                <div className="mt-8 rounded-2xl bg-slate-50 p-8">
+                  <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-500">
+                    LotWise Deal Score
+                  </p>
+
+                  <div className="mt-4 flex items-end gap-4">
+                    <span className={`text-6xl font-bold ${scoreColor}`}>
+                      {score}
+                    </span>
+                    <span className="pb-2 text-2xl text-slate-400">/ 100</span>
+                  </div>
+
+                  <div className="mt-4 h-3 w-full rounded-full bg-slate-200">
+                    <div
+                      className="h-3 rounded-full bg-slate-900"
+                      style={{ width: `${score}%` }}
+                    />
+                  </div>
+
+                  <p className={`mt-4 text-lg font-semibold ${scoreColor}`}>
+                    {scoreLabel}
+                  </p>
+
+                  <div className="mt-8 grid gap-4 md:grid-cols-3">
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">Strategy Fit</p>
+                      <p className="mt-2 text-2xl font-semibold">
+                        {strategyFit} / 100
+                      </p>
+                      <p className="mt-2 text-sm text-slate-600">
+                        {strategy || "Undecided"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">
+                        Investment Quality
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold">
+                        {investmentQuality} / 100
+                      </p>
+                      <p className="mt-2 text-sm text-slate-600">
+                        Guide price appears competitive.
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">Risk Level</p>
+                      <p className="mt-2 text-2xl font-semibold">
+                        {riskLevel} / 100
+                      </p>
+                      <p className="mt-2 text-sm text-slate-600">
+                        Medium legal and execution risk.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="mt-8 flex justify-between">
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 p-6">
+                  <h3 className="text-xl font-semibold">Key Risks</h3>
+                  <ul className="mt-4 space-y-3 text-sm text-slate-600">
+                    <li>• Short lease may affect mortgage options</li>
+                    <li>• Auction completion timeline may be tight</li>
+                    <li>• Legal pack review still recommended</li>
+                  </ul>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 p-6">
+                  <h3 className="text-xl font-semibold">Opportunities</h3>
+                  <ul className="mt-4 space-y-3 text-sm text-slate-600">
+                    <li>• Potential value upside based on local demand</li>
+                    <li>• Strategy fit is strong for selected approach</li>
+                    <li>• Refurbishment angle may improve returns</li>
+                  </ul>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 p-6">
+                  <h3 className="text-xl font-semibold">Similar Deals Nearby</h3>
+                  <div className="mt-4 space-y-4 text-sm text-slate-600">
+                    <div className="rounded-lg bg-slate-50 p-4">
+                      <p className="font-medium text-slate-900">
+                        7 High Street
+                      </p>
+                      <p>Deal Score: 62</p>
+                      <p>Strategy: Buy to Let</p>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 p-4">
+                      <p className="font-medium text-slate-900">
+                        22 Park Lane
+                      </p>
+                      <p>Deal Score: 71</p>
+                      <p>Strategy: Refurb &amp; Sell</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 p-6">
+                  <h3 className="text-xl font-semibold">Recommended Professionals</h3>
+                  <ul className="mt-4 space-y-3 text-sm text-slate-600">
+                    <li>• Solicitor experienced with auction purchases</li>
+                    <li>• Surveyor for condition and structure review</li>
+                    <li>• Builder for refurbishment pricing</li>
+                    <li>• Finance broker for auction funding options</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 p-6">
+                <h3 className="text-xl font-semibold">My Notes</h3>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Add your notes about this deal..."
+                  className="mt-4 min-h-[140px] w-full rounded-md border border-slate-300 px-4 py-3"
+                />
+              </div>
+
+              <div className="flex justify-between">
                 <button
                   type="button"
                   onClick={() => setStep(3)}
@@ -240,10 +384,10 @@ export default function AnalysePage() {
                   type="button"
                   className="rounded-md bg-black px-6 py-3 text-white"
                 >
-                  View Report
+                  Save Deal
                 </button>
               </div>
-            </>
+            </div>
           )}
         </div>
       </section>
