@@ -21,7 +21,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Convert dhrumil/rightmove-scraper -> dhrumil~rightmove-scraper
     const actor = actorRaw.replace("/", "~");
 
     const response = await fetch(
@@ -32,8 +31,11 @@ export async function POST(req: Request) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          propertyUrls: [url],
-          maxItems: 1,
+          propertyUrls: [{ url }],
+          fullPropertyDetails: true,
+          includePriceHistory: false,
+          includeNearestSchools: false,
+          maxProperties: 1,
         }),
       }
     );
@@ -42,16 +44,19 @@ export async function POST(req: Request) {
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: "Failed to fetch property data", details: properties },
+        {
+          error: "Failed to fetch property data",
+          details: properties,
+        },
         { status: 500 }
       );
     }
 
-    const property = properties?.[0];
+    const property = Array.isArray(properties) ? properties[0] : null;
 
     if (!property) {
       return NextResponse.json(
-        { error: "Property not found" },
+        { error: "Property not found", details: properties },
         { status: 404 }
       );
     }
