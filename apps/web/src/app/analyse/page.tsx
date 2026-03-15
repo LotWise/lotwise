@@ -13,6 +13,19 @@ type Experience =
   | "Some property experience"
   | "Experienced investor";
 
+type ExtractedProperty = {
+  address: string;
+  price: number | string;
+  bedrooms: number | string;
+  bathrooms: number | string;
+  propertyType: string;
+  description: string;
+  images: string[];
+  coordinates: { latitude: number; longitude: number } | null;
+  title: string;
+  url: string;
+};
+
 export default function AnalysePage() {
   const [step, setStep] = useState(1);
   const [strategy, setStrategy] = useState<Strategy | "">("");
@@ -22,15 +35,57 @@ export default function AnalysePage() {
   const [legalPackName, setLegalPackName] = useState("");
   const [notes, setNotes] = useState("");
 
+  const [loadingProperty, setLoadingProperty] = useState(false);
+  const [propertyError, setPropertyError] = useState("");
+  const [extractedProperty, setExtractedProperty] =
+    useState<ExtractedProperty | null>(null);
+
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const propertyFromUrl = params.get("property");
-      if (propertyFromUrl && !property && !address) {
-        setProperty(propertyFromUrl);
-        setAddress(propertyFromUrl);
-      }
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const propertyFromUrl = params.get("property");
+
+    if (!propertyFromUrl || property || address) return;
+
+    setProperty(propertyFromUrl);
+
+    const isLink = /^https?:\/\//i.test(propertyFromUrl);
+
+    if (!isLink) {
+      setAddress(propertyFromUrl);
+      return;
     }
+
+    const fetchProperty = async () => {
+      try {
+        setLoadingProperty(true);
+        setPropertyError("");
+
+        const response = await fetch("/api/analyse", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ url: propertyFromUrl }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data?.error || "Failed to fetch property data");
+        }
+
+        setExtractedProperty(data);
+        if (data.address) setAddress(data.address);
+      } catch (error) {
+        setPropertyError("We couldn't auto-load this listing yet.");
+      } finally {
+        setLoadingProperty(false);
+      }
+    };
+
+    fetchProperty();
   }, [property, address]);
 
   useEffect(() => {
@@ -78,11 +133,23 @@ export default function AnalysePage() {
       : "text-red-600";
 
   const propertyDisplay =
-    address || property || "Property Analysis";
+    address || extractedProperty?.title || property || "Property Analysis";
 
   const requestHelpHref = `/request-help?property=${encodeURIComponent(
     propertyDisplay
   )}`;
+
+  const formatPrice = (value: number | string | undefined) => {
+    if (value === undefined || value === null || value === "") return "N/A";
+    const numeric =
+      typeof value === "number" ? value : Number(String(value).replace(/,/g, ""));
+    if (Number.isNaN(numeric)) return String(value);
+    return new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: "GBP",
+      maximumFractionDigits: 0,
+    }).format(numeric);
+  };
 
   return (
     <main className="min-h-screen bg-white text-slate-900">
@@ -94,6 +161,59 @@ export default function AnalysePage() {
         <p className="mt-4 text-lg text-slate-600">
           Use LotWise to analyse a property before you buy.
         </p>
+
+        {(property || loadingProperty || propertyError || extractedProperty) && (
+          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-500">
+              Property Input
+            </p>
+
+            <p className="mt-2 break-all text-sm text-slate-700">{property}</p>
+
+            {loadingProperty && (
+              <p className="mt-3 text-sm text-slate-500">
+                Loading property details from listing...
+              </p>
+            )}
+
+            {propertyError && (
+              <p className="mt-3 text-sm text-red-600">{propertyError}</p>
+            )}
+
+            {extractedProperty && (
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <p className="text-sm text-slate-500">Detected Address</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {extractedProperty.address || "N/A"}
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <p className="text-sm text-slate-500">Guide Price</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {formatPrice(extractedProperty.price)}
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <p className="text-sm text-slate-500">Property Type</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {extractedProperty.propertyType || "N/A"}
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <p className="text-sm text-slate-500">Beds / Baths</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {extractedProperty.bedrooms || "?"} bed •{" "}
+                    {extractedProperty.bathrooms || "?"} bath
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-10 flex flex-wrap gap-4 text-sm">
           <span className={stepClass(1)}>
@@ -305,7 +425,10 @@ export default function AnalysePage() {
                     </p>
 
                     <div className="mt-6 relative flex h-48 w-48 items-center justify-center">
-                      <svg className="h-48 w-48 -rotate-90" viewBox="0 0 120 120">
+                      <svg
+                        className="h-48 w-48 -rotate-90"
+                        viewBox="0 0 120 120"
+                      >
                         <circle
                           cx="60"
                           cy="60"
