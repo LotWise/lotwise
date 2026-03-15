@@ -12,17 +12,20 @@ export async function POST(req: Request) {
     }
 
     const token = process.env.APIFY_TOKEN;
-    const actor = process.env.APIFY_ACTOR;
+    const actorRaw = process.env.APIFY_ACTOR;
 
-    if (!token || !actor) {
+    if (!token || !actorRaw) {
       return NextResponse.json(
         { error: "Missing Apify environment variables" },
         { status: 500 }
       );
     }
 
-    const runResponse = await fetch(
-      `https://api.apify.com/v2/acts/${actor}/runs?token=${token}`,
+    // Convert dhrumil/rightmove-scraper -> dhrumil~rightmove-scraper
+    const actor = actorRaw.replace("/", "~");
+
+    const response = await fetch(
+      `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${token}`,
       {
         method: "POST",
         headers: {
@@ -35,33 +38,11 @@ export async function POST(req: Request) {
       }
     );
 
-    const runData = await runResponse.json();
+    const properties = await response.json();
 
-    if (!runResponse.ok) {
+    if (!response.ok) {
       return NextResponse.json(
-        { error: "Failed to start Apify actor", details: runData },
-        { status: 500 }
-      );
-    }
-
-    const datasetId = runData?.data?.defaultDatasetId;
-
-    if (!datasetId) {
-      return NextResponse.json(
-        { error: "No dataset returned from Apify" },
-        { status: 500 }
-      );
-    }
-
-    const datasetResponse = await fetch(
-      `https://api.apify.com/v2/datasets/${datasetId}/items?token=${token}`
-    );
-
-    const properties = await datasetResponse.json();
-
-    if (!datasetResponse.ok) {
-      return NextResponse.json(
-        { error: "Failed to fetch dataset", details: properties },
+        { error: "Failed to fetch property data", details: properties },
         { status: 500 }
       );
     }
@@ -89,7 +70,10 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to analyse property" },
+      {
+        error: "Failed to analyse property",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }
