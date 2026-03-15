@@ -17,10 +17,21 @@ export default function AnalysePage() {
   const [step, setStep] = useState(1);
   const [strategy, setStrategy] = useState<Strategy | "">("");
   const [experience, setExperience] = useState<Experience | "">("");
-  const [auctionLink, setAuctionLink] = useState("");
+  const [property, setProperty] = useState("");
   const [address, setAddress] = useState("");
   const [legalPackName, setLegalPackName] = useState("");
   const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const propertyFromUrl = params.get("property");
+      if (propertyFromUrl && !property && !address) {
+        setProperty(propertyFromUrl);
+        setAddress(propertyFromUrl);
+      }
+    }
+  }, [property, address]);
 
   useEffect(() => {
     if (step === 4) {
@@ -39,31 +50,35 @@ export default function AnalysePage() {
       ? "text-slate-500"
       : "text-slate-400";
 
-  const score = 68;
+  const score = 74;
   const strategyFit = 78;
   const investmentQuality = 72;
   const riskLevel = 55;
 
   const scoreLabel =
     score >= 80
-      ? "Strong Opportunity"
-      : score >= 60
-      ? "Promising"
+      ? "Excellent Opportunity"
+      : score >= 70
+      ? "Strong Deal"
+      : score >= 55
+      ? "Potential but Needs Work"
       : score >= 40
-      ? "Medium Risk"
-      : "High Risk";
+      ? "Risky"
+      : "Avoid";
 
   const scoreColor =
     score >= 80
       ? "text-green-600"
-      : score >= 60
+      : score >= 70
+      ? "text-green-500"
+      : score >= 55
       ? "text-amber-500"
       : score >= 40
       ? "text-orange-500"
       : "text-red-600";
 
   const propertyDisplay =
-    address || auctionLink || "Auction Property Analysis";
+    address || property || "Property Analysis";
 
   const requestHelpHref = `/request-help?property=${encodeURIComponent(
     propertyDisplay
@@ -73,11 +88,11 @@ export default function AnalysePage() {
     <main className="min-h-screen bg-white text-slate-900">
       <section className="mx-auto max-w-5xl px-6 py-20">
         <h1 className="text-4xl font-bold tracking-tight">
-          Analyse an Auction Property
+          Analyse Any Property Deal
         </h1>
 
         <p className="mt-4 text-lg text-slate-600">
-          Use LotWise to analyse an auction property before you bid.
+          Use LotWise to analyse a property before you buy.
         </p>
 
         <div className="mt-10 flex flex-wrap gap-4 text-sm">
@@ -200,8 +215,8 @@ export default function AnalysePage() {
                   </label>
                   <input
                     type="url"
-                    value={auctionLink}
-                    onChange={(e) => setAuctionLink(e.target.value)}
+                    value={property}
+                    onChange={(e) => setProperty(e.target.value)}
                     placeholder="Paste property listing URL"
                     className="w-full rounded-md border border-slate-300 px-4 py-3"
                   />
@@ -252,7 +267,7 @@ export default function AnalysePage() {
                 <button
                   type="button"
                   onClick={() => setStep(4)}
-                  disabled={!auctionLink && !address && !legalPackName}
+                  disabled={!property && !address && !legalPackName}
                   className="rounded-md bg-black px-6 py-3 text-white disabled:opacity-40"
                 >
                   Analyse Property
@@ -284,27 +299,49 @@ export default function AnalysePage() {
                 <h2 className="mt-3 text-3xl font-bold">{propertyDisplay}</h2>
 
                 <div className="mt-8 rounded-2xl bg-slate-50 p-8">
-                  <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-500">
-                    LotWise Deal Score
-                  </p>
+                  <div className="mt-6 flex flex-col items-center text-center">
+                    <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-500">
+                      LotWise Deal Score
+                    </p>
 
-                  <div className="mt-4 flex items-end gap-4">
-                    <span className={`text-6xl font-bold ${scoreColor}`}>
-                      {score}
-                    </span>
-                    <span className="pb-2 text-2xl text-slate-400">/ 100</span>
+                    <div className="mt-6 relative flex h-48 w-48 items-center justify-center">
+                      <svg className="h-48 w-48 -rotate-90" viewBox="0 0 120 120">
+                        <circle
+                          cx="60"
+                          cy="60"
+                          r="52"
+                          fill="none"
+                          stroke="#e2e8f0"
+                          strokeWidth="10"
+                        />
+                        <circle
+                          cx="60"
+                          cy="60"
+                          r="52"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="10"
+                          strokeLinecap="round"
+                          className={scoreColor}
+                          strokeDasharray={`${2 * Math.PI * 52}`}
+                          strokeDashoffset={`${
+                            2 * Math.PI * 52 * (1 - score / 100)
+                          }`}
+                        />
+                      </svg>
+
+                      <div className="absolute flex flex-col items-center">
+                        <span className={`text-5xl font-bold ${scoreColor}`}>
+                          {score}
+                        </span>
+                        <span className="text-sm text-slate-400">/ 100</span>
+                      </div>
+                    </div>
+
+                    <p className={`mt-4 text-xl font-semibold ${scoreColor}`}>
+                      {scoreLabel}
+                    </p>
                   </div>
-
-                  <div className="mt-4 h-3 w-full rounded-full bg-slate-200">
-                    <div
-                      className="h-3 rounded-full bg-slate-900"
-                      style={{ width: `${score}%` }}
-                    />
-                  </div>
-
-                  <p className={`mt-4 text-lg font-semibold ${scoreColor}`}>
-                    {scoreLabel}
-                  </p>
 
                   <div className="mt-8 grid gap-4 md:grid-cols-3">
                     <div className="rounded-xl border border-slate-200 bg-white p-4">
