@@ -142,9 +142,12 @@ export default function AnalysePage() {
 
   const formatPrice = (value: number | string | undefined) => {
     if (value === undefined || value === null || value === "") return "N/A";
+
     const numeric =
       typeof value === "number" ? value : Number(String(value).replace(/,/g, ""));
+
     if (Number.isNaN(numeric)) return String(value);
+
     return new Intl.NumberFormat("en-GB", {
       style: "currency",
       currency: "GBP",
@@ -301,8 +304,8 @@ export default function AnalysePage() {
               </h2>
 
               <p className="mt-3 text-slate-600">
-                We’ll tailor the analysis and next steps based on what you’re
-                trying to achieve with this property.
+                We’ll tailor the analysis and support based on what you’re
+                trying to do with this property.
               </p>
 
               <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -374,7 +377,7 @@ export default function AnalysePage() {
                     </p>
                     <ul className="mt-3 space-y-2 text-sm text-slate-700">
                       <li>• Speak to a mortgage broker about affordability</li>
-                      <li>• Instruct a solicitor once you’re ready to proceed</li>
+                      <li>• Instruct a solicitor when ready to proceed</li>
                       <li>• Book a survey before committing</li>
                       <li>• Get renovation quotes if works are needed</li>
                     </ul>
@@ -659,6 +662,100 @@ export default function AnalysePage() {
                     </div>
                   </div>
                 </div>
+
+                {showBuyToLetPanel && (
+                  <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+                    <h3 className="text-xl font-semibold">
+                      Buy to Let Snapshot
+                    </h3>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-sm text-slate-500">Estimated Rent</p>
+                        <p className="mt-1 text-xl font-semibold text-slate-900">
+                          {estimatedMonthlyRent
+                            ? `${formatPrice(estimatedMonthlyRent)}/mo`
+                            : "N/A"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-sm text-slate-500">Annual Rent</p>
+                        <p className="mt-1 text-xl font-semibold text-slate-900">
+                          {annualRent ? formatPrice(annualRent) : "N/A"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-sm text-slate-500">Gross Yield</p>
+                        <p className="mt-1 text-xl font-semibold text-slate-900">
+                          {grossYield ? `${grossYield.toFixed(1)}%` : "N/A"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-sm text-slate-500">Yield Rating</p>
+                        <p className="mt-1 text-xl font-semibold text-slate-900">
+                          {yieldLabel}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {showHomeBuyerPanel && (
+                  <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+                    <h3 className="text-xl font-semibold">
+                      First-Time Buyer / New Home Snapshot
+                    </h3>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-sm text-slate-500">Indicative Rate</p>
+                        <p className="mt-1 text-xl font-semibold text-slate-900">
+                          {indicativeRate.toFixed(1)}%
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-sm text-slate-500">10% Deposit</p>
+                        <p className="mt-1 text-xl font-semibold text-slate-900">
+                          {deposit10 ? formatPrice(deposit10) : "N/A"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-sm text-slate-500">20% Deposit</p>
+                        <p className="mt-1 text-xl font-semibold text-slate-900">
+                          {deposit20 ? formatPrice(deposit20) : "N/A"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-sm text-slate-500">
+                          Est. Monthly Mortgage
+                        </p>
+                        <p className="mt-1 text-xl font-semibold text-slate-900">
+                          {estimatedMonthlyMortgage
+                            ? `${formatPrice(estimatedMonthlyMortgage)}/mo`
+                            : "N/A"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-sm text-slate-500">
+                        Recommended next steps
+                      </p>
+                      <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                        <li>• Speak to a mortgage broker about affordability</li>
+                        <li>• Instruct a solicitor when ready to proceed</li>
+                        <li>• Book a survey before committing</li>
+                        <li>• Get renovation quotes if works are needed</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
