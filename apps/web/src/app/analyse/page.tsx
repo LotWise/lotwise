@@ -3,15 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 
 type Strategy =
+  | "First-Time Buyer / New Home"
   | "Buy to Let"
   | "Refurb & Sell"
   | "Development / Conversion"
   | "Undecided";
 
 type Experience =
-  | "First-time auction buyer"
+  | "First-time buyer"
   | "Some property experience"
-  | "Experienced investor";
+  | "Experienced buyer / investor";
 
 type ExtractedProperty = {
   address: string;
@@ -189,6 +190,26 @@ export default function AnalysePage() {
       ? "Low"
       : "Unavailable";
 
+  const deposit10 = numericPrice ? numericPrice * 0.1 : 0;
+  const deposit15 = numericPrice ? numericPrice * 0.15 : 0;
+  const deposit20 = numericPrice ? numericPrice * 0.2 : 0;
+  const mortgageNeeded90 = numericPrice ? numericPrice - deposit10 : 0;
+
+  const indicativeRate = 4.9;
+
+  const estimatedMonthlyMortgage = useMemo(() => {
+    if (!mortgageNeeded90) return 0;
+    const monthlyRate = indicativeRate / 100 / 12;
+    const months = 30 * 12;
+    const payment =
+      (mortgageNeeded90 * monthlyRate) /
+      (1 - Math.pow(1 + monthlyRate, -months));
+    return Number.isFinite(payment) ? payment : 0;
+  }, [mortgageNeeded90]);
+
+  const showBuyToLetPanel = strategy === "Buy to Let";
+  const showHomeBuyerPanel = strategy === "First-Time Buyer / New Home";
+
   return (
     <main className="min-h-screen bg-white text-slate-900">
       <section className="mx-auto max-w-5xl px-6 py-20">
@@ -219,76 +240,36 @@ export default function AnalysePage() {
             )}
 
             {extractedProperty && (
-              <>
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <div className="rounded-lg border border-slate-200 bg-white p-4">
-                    <p className="text-sm text-slate-500">Detected Address</p>
-                    <p className="mt-1 font-medium text-slate-900">
-                      {extractedProperty.address || "N/A"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-lg border border-slate-200 bg-white p-4">
-                    <p className="text-sm text-slate-500">Guide Price</p>
-                    <p className="mt-1 font-medium text-slate-900">
-                      {formatPrice(extractedProperty.price)}
-                    </p>
-                  </div>
-
-                  <div className="rounded-lg border border-slate-200 bg-white p-4">
-                    <p className="text-sm text-slate-500">Property Type</p>
-                    <p className="mt-1 font-medium text-slate-900">
-                      {extractedProperty.propertyType || "N/A"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-lg border border-slate-200 bg-white p-4">
-                    <p className="text-sm text-slate-500">Beds / Baths</p>
-                    <p className="mt-1 font-medium text-slate-900">
-                      {extractedProperty.bedrooms || "?"} bed •{" "}
-                      {extractedProperty.bathrooms || "?"} bath
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4 rounded-xl border border-slate-200 bg-white p-5">
-                  <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-500">
-                    Quick Deal Analysis
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <p className="text-sm text-slate-500">Detected Address</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {extractedProperty.address || "N/A"}
                   </p>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-4">
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">Estimated Rent</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {estimatedMonthlyRent
-                          ? `${formatPrice(estimatedMonthlyRent)}/mo`
-                          : "N/A"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">Annual Rent</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {annualRent ? formatPrice(annualRent) : "N/A"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">Gross Yield</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {grossYield ? `${grossYield.toFixed(1)}%` : "N/A"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">Yield Rating</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {yieldLabel}
-                      </p>
-                    </div>
-                  </div>
                 </div>
-              </>
+
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <p className="text-sm text-slate-500">Guide Price</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {formatPrice(extractedProperty.price)}
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <p className="text-sm text-slate-500">Property Type</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {extractedProperty.propertyType || "N/A"}
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <p className="text-sm text-slate-500">Beds / Baths</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {extractedProperty.bedrooms || "?"} bed •{" "}
+                    {extractedProperty.bathrooms || "?"} bath
+                  </p>
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -319,8 +300,14 @@ export default function AnalysePage() {
                 What is your strategy?
               </h2>
 
+              <p className="mt-3 text-slate-600">
+                We’ll tailor the analysis and next steps based on what you’re
+                trying to achieve with this property.
+              </p>
+
               <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {[
+                  "First-Time Buyer / New Home",
                   "Buy to Let",
                   "Refurb & Sell",
                   "Development / Conversion",
@@ -340,6 +327,100 @@ export default function AnalysePage() {
                   </button>
                 ))}
               </div>
+
+              {showHomeBuyerPanel && (
+                <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-5">
+                  <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-500">
+                    Home Buyer Snapshot
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">Indicative Rate</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {indicativeRate.toFixed(1)}%
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">10% Deposit</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {deposit10 ? formatPrice(deposit10) : "N/A"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">15% Deposit</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {deposit15 ? formatPrice(deposit15) : "N/A"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">
+                        Est. Monthly Mortgage
+                      </p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {estimatedMonthlyMortgage
+                          ? `${formatPrice(estimatedMonthlyMortgage)}/mo`
+                          : "N/A"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
+                    <p className="text-sm text-slate-500">
+                      Recommended next steps
+                    </p>
+                    <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                      <li>• Speak to a mortgage broker about affordability</li>
+                      <li>• Instruct a solicitor once you’re ready to proceed</li>
+                      <li>• Book a survey before committing</li>
+                      <li>• Get renovation quotes if works are needed</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {showBuyToLetPanel && (
+                <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-5">
+                  <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-500">
+                    Quick Deal Analysis
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">Estimated Rent</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {estimatedMonthlyRent
+                          ? `${formatPrice(estimatedMonthlyRent)}/mo`
+                          : "N/A"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">Annual Rent</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {annualRent ? formatPrice(annualRent) : "N/A"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">Gross Yield</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {grossYield ? `${grossYield.toFixed(1)}%` : "N/A"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">Yield Rating</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {yieldLabel}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-8 flex justify-end">
                 <button
@@ -362,9 +443,9 @@ export default function AnalysePage() {
 
               <div className="mt-6 grid grid-cols-1 gap-4">
                 {[
-                  "First-time auction buyer",
+                  "First-time buyer",
                   "Some property experience",
-                  "Experienced investor",
+                  "Experienced buyer / investor",
                 ].map((option) => (
                   <button
                     key={option}
@@ -672,4 +753,3 @@ export default function AnalysePage() {
     </main>
   );
 }
-
