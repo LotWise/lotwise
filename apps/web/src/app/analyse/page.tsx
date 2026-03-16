@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Strategy =
   | "Buy to Let"
@@ -78,7 +78,7 @@ export default function AnalysePage() {
 
         setExtractedProperty(data);
         if (data.address) setAddress(data.address);
-      } catch (error) {
+      } catch {
         setPropertyError("We couldn't auto-load this listing yet.");
       } finally {
         setLoadingProperty(false);
@@ -151,6 +151,44 @@ export default function AnalysePage() {
     }).format(numeric);
   };
 
+  const bedroomCount = useMemo(() => {
+    const raw = extractedProperty?.bedrooms;
+    const parsed = Number(raw);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }, [extractedProperty]);
+
+  const estimatedMonthlyRent = useMemo(() => {
+    if (!bedroomCount) return 0;
+    if (bedroomCount === 1) return 1100;
+    if (bedroomCount === 2) return 1400;
+    if (bedroomCount === 3) return 1700;
+    if (bedroomCount >= 4) return 2100;
+    return 0;
+  }, [bedroomCount]);
+
+  const annualRent = estimatedMonthlyRent * 12;
+
+  const numericPrice = useMemo(() => {
+    const raw = extractedProperty?.price;
+    const parsed =
+      typeof raw === "number" ? raw : Number(String(raw ?? "").replace(/,/g, ""));
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }, [extractedProperty]);
+
+  const grossYield = useMemo(() => {
+    if (!numericPrice || !annualRent) return 0;
+    return (annualRent / numericPrice) * 100;
+  }, [annualRent, numericPrice]);
+
+  const yieldLabel =
+    grossYield >= 7
+      ? "Strong"
+      : grossYield >= 5
+      ? "Moderate"
+      : grossYield > 0
+      ? "Low"
+      : "Unavailable";
+
   return (
     <main className="min-h-screen bg-white text-slate-900">
       <section className="mx-auto max-w-5xl px-6 py-20">
@@ -181,36 +219,76 @@ export default function AnalysePage() {
             )}
 
             {extractedProperty && (
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div className="rounded-lg border border-slate-200 bg-white p-4">
-                  <p className="text-sm text-slate-500">Detected Address</p>
-                  <p className="mt-1 font-medium text-slate-900">
-                    {extractedProperty.address || "N/A"}
-                  </p>
+              <>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <div className="rounded-lg border border-slate-200 bg-white p-4">
+                    <p className="text-sm text-slate-500">Detected Address</p>
+                    <p className="mt-1 font-medium text-slate-900">
+                      {extractedProperty.address || "N/A"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-white p-4">
+                    <p className="text-sm text-slate-500">Guide Price</p>
+                    <p className="mt-1 font-medium text-slate-900">
+                      {formatPrice(extractedProperty.price)}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-white p-4">
+                    <p className="text-sm text-slate-500">Property Type</p>
+                    <p className="mt-1 font-medium text-slate-900">
+                      {extractedProperty.propertyType || "N/A"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-white p-4">
+                    <p className="text-sm text-slate-500">Beds / Baths</p>
+                    <p className="mt-1 font-medium text-slate-900">
+                      {extractedProperty.bedrooms || "?"} bed •{" "}
+                      {extractedProperty.bathrooms || "?"} bath
+                    </p>
+                  </div>
                 </div>
 
-                <div className="rounded-lg border border-slate-200 bg-white p-4">
-                  <p className="text-sm text-slate-500">Guide Price</p>
-                  <p className="mt-1 font-medium text-slate-900">
-                    {formatPrice(extractedProperty.price)}
+                <div className="mt-4 rounded-xl border border-slate-200 bg-white p-5">
+                  <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-500">
+                    Quick Deal Analysis
                   </p>
-                </div>
 
-                <div className="rounded-lg border border-slate-200 bg-white p-4">
-                  <p className="text-sm text-slate-500">Property Type</p>
-                  <p className="mt-1 font-medium text-slate-900">
-                    {extractedProperty.propertyType || "N/A"}
-                  </p>
-                </div>
+                  <div className="mt-4 grid gap-4 md:grid-cols-4">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-sm text-slate-500">Estimated Rent</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {estimatedMonthlyRent
+                          ? `${formatPrice(estimatedMonthlyRent)}/mo`
+                          : "N/A"}
+                      </p>
+                    </div>
 
-                <div className="rounded-lg border border-slate-200 bg-white p-4">
-                  <p className="text-sm text-slate-500">Beds / Baths</p>
-                  <p className="mt-1 font-medium text-slate-900">
-                    {extractedProperty.bedrooms || "?"} bed •{" "}
-                    {extractedProperty.bathrooms || "?"} bath
-                  </p>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-sm text-slate-500">Annual Rent</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {annualRent ? formatPrice(annualRent) : "N/A"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-sm text-slate-500">Gross Yield</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {grossYield ? `${grossYield.toFixed(1)}%` : "N/A"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-sm text-slate-500">Yield Rating</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {yieldLabel}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
         )}
@@ -594,3 +672,4 @@ export default function AnalysePage() {
     </main>
   );
 }
+commit direct to main, yes or no?
