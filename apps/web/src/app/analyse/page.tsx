@@ -210,8 +210,39 @@ export default function AnalysePage() {
     return Number.isFinite(payment) ? payment : 0;
   }, [mortgageNeeded90]);
 
+  // Very simplified placeholder SDLT logic for prototype purposes
+  const stampDutyEstimate = useMemo(() => {
+    if (!numericPrice) return 0;
+
+    if (strategy === "First-Time Buyer / New Home") {
+      if (numericPrice <= 425000) return 0;
+      return Math.max(0, (numericPrice - 425000) * 0.05);
+    }
+
+    if (numericPrice <= 250000) return 0;
+    return (numericPrice - 250000) * 0.05;
+  }, [numericPrice, strategy]);
+
   const showBuyToLetPanel = strategy === "Buy to Let";
   const showHomeBuyerPanel = strategy === "First-Time Buyer / New Home";
+
+  const buyToLetVerdict =
+    grossYield >= 7
+      ? "Strong Buy to Let Opportunity"
+      : grossYield >= 5
+      ? "Moderate Investment Opportunity"
+      : grossYield > 0
+      ? "Low Yield Investment"
+      : "Yield unavailable";
+
+  const homeBuyerVerdict =
+    estimatedMonthlyMortgage < 1500
+      ? "Comfortable Mortgage Range"
+      : estimatedMonthlyMortgage < 2500
+      ? "Manageable Mortgage Commitment"
+      : estimatedMonthlyMortgage > 0
+      ? "Higher Monthly Commitment"
+      : "Mortgage estimate unavailable";
 
   return (
     <main className="min-h-screen bg-white text-slate-900">
@@ -371,6 +402,22 @@ export default function AnalysePage() {
                     </div>
                   </div>
 
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">Stamp Duty Estimate</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {formatPrice(stampDutyEstimate)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">LotWise Verdict</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {homeBuyerVerdict}
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
                     <p className="text-sm text-slate-500">
                       Recommended next steps
@@ -421,6 +468,13 @@ export default function AnalysePage() {
                         {yieldLabel}
                       </p>
                     </div>
+                  </div>
+
+                  <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
+                    <p className="text-sm text-slate-500">LotWise Verdict</p>
+                    <p className="mt-1 text-xl font-semibold text-slate-900">
+                      {buyToLetVerdict}
+                    </p>
                   </div>
                 </div>
               )}
@@ -700,6 +754,13 @@ export default function AnalysePage() {
                         </p>
                       </div>
                     </div>
+
+                    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-sm text-slate-500">LotWise Verdict</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {buyToLetVerdict}
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -743,6 +804,22 @@ export default function AnalysePage() {
                       </div>
                     </div>
 
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-sm text-slate-500">Stamp Duty Estimate</p>
+                        <p className="mt-1 text-xl font-semibold text-slate-900">
+                          {formatPrice(stampDutyEstimate)}
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-sm text-slate-500">LotWise Verdict</p>
+                        <p className="mt-1 text-xl font-semibold text-slate-900">
+                          {homeBuyerVerdict}
+                        </p>
+                      </div>
+                    </div>
+
                     <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                       <p className="text-sm text-slate-500">
                         Recommended next steps
@@ -778,21 +855,25 @@ export default function AnalysePage() {
                 </div>
 
                 <div className="rounded-xl border border-slate-200 p-6">
-                  <h3 className="text-xl font-semibold">Similar Deals Nearby</h3>
+                  <h3 className="text-xl font-semibold">Comparable Sales</h3>
                   <div className="mt-4 space-y-4 text-sm text-slate-600">
+                    <div className="rounded-lg bg-slate-50 p-4">
+                      <p className="font-medium text-slate-900">
+                        12 Oak Road
+                      </p>
+                      <p>Recent sale: £420,000</p>
+                    </div>
                     <div className="rounded-lg bg-slate-50 p-4">
                       <p className="font-medium text-slate-900">
                         7 High Street
                       </p>
-                      <p>Deal Score: 62</p>
-                      <p>Strategy: Buy to Let</p>
+                      <p>Recent sale: £405,000</p>
                     </div>
                     <div className="rounded-lg bg-slate-50 p-4">
                       <p className="font-medium text-slate-900">
-                        22 Park Lane
+                        14 Park Lane
                       </p>
-                      <p>Deal Score: 71</p>
-                      <p>Strategy: Refurb &amp; Sell</p>
+                      <p>Recent sale: £438,000</p>
                     </div>
                   </div>
                 </div>
