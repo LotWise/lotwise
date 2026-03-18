@@ -41,6 +41,12 @@ export default function AnalysePage() {
   const [extractedProperty, setExtractedProperty] =
     useState<ExtractedProperty | null>(null);
 
+  const [manualRent, setManualRent] = useState("");
+  const [manualRefurb, setManualRefurb] = useState("");
+  const [depositPercent, setDepositPercent] = useState(10);
+  const [mortgageRate, setMortgageRate] = useState(4.9);
+  const [mortgageTerm, setMortgageTerm] = useState(30);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -161,7 +167,14 @@ export default function AnalysePage() {
     return Number.isNaN(parsed) ? 0 : parsed;
   }, [extractedProperty]);
 
-  const estimatedMonthlyRent = useMemo(() => {
+  const numericPrice = useMemo(() => {
+    const raw = extractedProperty?.price;
+    const parsed =
+      typeof raw === "number" ? raw : Number(String(raw ?? "").replace(/,/g, ""));
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }, [extractedProperty]);
+
+  const suggestedMonthlyRent = useMemo(() => {
     if (!bedroomCount) return 0;
     if (bedroomCount === 1) return 1100;
     if (bedroomCount === 2) return 1400;
@@ -170,19 +183,24 @@ export default function AnalysePage() {
     return 0;
   }, [bedroomCount]);
 
-  const annualRent = estimatedMonthlyRent * 12;
+  const monthlyRent = useMemo(() => {
+    const manual = Number(manualRent);
+    if (!Number.isNaN(manual) && manual > 0) return manual;
+    return suggestedMonthlyRent;
+  }, [manualRent, suggestedMonthlyRent]);
 
-  const numericPrice = useMemo(() => {
-    const raw = extractedProperty?.price;
-    const parsed =
-      typeof raw === "number" ? raw : Number(String(raw ?? "").replace(/,/g, ""));
-    return Number.isNaN(parsed) ? 0 : parsed;
-  }, [extractedProperty]);
+  const annualRent = monthlyRent * 12;
 
   const grossYield = useMemo(() => {
     if (!numericPrice || !annualRent) return 0;
     return (annualRent / numericPrice) * 100;
   }, [annualRent, numericPrice]);
+
+  const refurbEstimate = useMemo(() => {
+    const manual = Number(manualRefurb);
+    if (!Number.isNaN(manual) && manual >= 0) return manual;
+    return 0;
+  }, [manualRefurb]);
 
   const yieldLabel =
     grossYield >= 7
@@ -193,24 +211,26 @@ export default function AnalysePage() {
       ? "Low"
       : "Unavailable";
 
-  const deposit10 = numericPrice ? numericPrice * 0.1 : 0;
-  const deposit15 = numericPrice ? numericPrice * 0.15 : 0;
-  const deposit20 = numericPrice ? numericPrice * 0.2 : 0;
-  const mortgageNeeded90 = numericPrice ? numericPrice - deposit10 : 0;
+  const depositAmount = useMemo(() => {
+    if (!numericPrice) return 0;
+    return numericPrice * (depositPercent / 100);
+  }, [numericPrice, depositPercent]);
 
-  const indicativeRate = 4.9;
+  const mortgageNeeded = useMemo(() => {
+    if (!numericPrice) return 0;
+    return numericPrice - depositAmount;
+  }, [numericPrice, depositAmount]);
 
   const estimatedMonthlyMortgage = useMemo(() => {
-    if (!mortgageNeeded90) return 0;
-    const monthlyRate = indicativeRate / 100 / 12;
-    const months = 30 * 12;
+    if (!mortgageNeeded || !mortgageRate || !mortgageTerm) return 0;
+    const monthlyRate = mortgageRate / 100 / 12;
+    const months = mortgageTerm * 12;
     const payment =
-      (mortgageNeeded90 * monthlyRate) /
+      (mortgageNeeded * monthlyRate) /
       (1 - Math.pow(1 + monthlyRate, -months));
     return Number.isFinite(payment) ? payment : 0;
-  }, [mortgageNeeded90]);
+  }, [mortgageNeeded, mortgageRate, mortgageTerm]);
 
-  // Very simplified placeholder SDLT logic for prototype purposes
   const stampDutyEstimate = useMemo(() => {
     if (!numericPrice) return 0;
 
@@ -370,31 +390,49 @@ export default function AnalysePage() {
 
                   <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">Indicative Rate</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {indicativeRate.toFixed(1)}%
-                      </p>
+                      <p className="text-sm text-slate-500">Mortgage Rate</p>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={mortgageRate}
+                        onChange={(e) =>
+                          setMortgageRate(Number(e.target.value) || 0)
+                        }
+                        className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2"
+                      />
                     </div>
 
                     <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">10% Deposit</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {deposit10 ? formatPrice(deposit10) : "N/A"}
-                      </p>
+                      <p className="text-sm text-slate-500">Deposit %</p>
+                      <input
+                        type="number"
+                        step="1"
+                        value={depositPercent}
+                        onChange={(e) =>
+                          setDepositPercent(Number(e.target.value) || 0)
+                        }
+                        className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2"
+                      />
                     </div>
 
                     <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">15% Deposit</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {deposit15 ? formatPrice(deposit15) : "N/A"}
-                      </p>
+                      <p className="text-sm text-slate-500">Mortgage Term</p>
+                      <input
+                        type="number"
+                        step="1"
+                        value={mortgageTerm}
+                        onChange={(e) =>
+                          setMortgageTerm(Number(e.target.value) || 0)
+                        }
+                        className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2"
+                      />
                     </div>
 
                     <div className="rounded-lg border border-slate-200 bg-white p-4">
                       <p className="text-sm text-slate-500">
                         Est. Monthly Mortgage
                       </p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                      <p className="mt-3 text-xl font-semibold text-slate-900">
                         {estimatedMonthlyMortgage
                           ? `${formatPrice(estimatedMonthlyMortgage)}/mo`
                           : "N/A"}
@@ -404,30 +442,25 @@ export default function AnalysePage() {
 
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">Deposit Amount</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {formatPrice(depositAmount)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
                       <p className="text-sm text-slate-500">Stamp Duty Estimate</p>
                       <p className="mt-1 text-xl font-semibold text-slate-900">
                         {formatPrice(stampDutyEstimate)}
                       </p>
                     </div>
-
-                    <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">LotWise Verdict</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {homeBuyerVerdict}
-                      </p>
-                    </div>
                   </div>
 
                   <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
-                    <p className="text-sm text-slate-500">
-                      Recommended next steps
+                    <p className="text-sm text-slate-500">LotWise Verdict</p>
+                    <p className="mt-1 text-xl font-semibold text-slate-900">
+                      {homeBuyerVerdict}
                     </p>
-                    <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                      <li>• Speak to a mortgage broker about affordability</li>
-                      <li>• Instruct a solicitor when ready to proceed</li>
-                      <li>• Book a survey before committing</li>
-                      <li>• Get renovation quotes if works are needed</li>
-                    </ul>
                   </div>
                 </div>
               )}
@@ -440,32 +473,56 @@ export default function AnalysePage() {
 
                   <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">Estimated Rent</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {estimatedMonthlyRent
-                          ? `${formatPrice(estimatedMonthlyRent)}/mo`
-                          : "N/A"}
-                      </p>
+                      <p className="text-sm text-slate-500">Monthly Rent</p>
+                      <input
+                        type="number"
+                        step="50"
+                        value={manualRent}
+                        onChange={(e) => setManualRent(e.target.value)}
+                        placeholder={String(suggestedMonthlyRent || "")}
+                        className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2"
+                      />
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">Refurb Estimate</p>
+                      <input
+                        type="number"
+                        step="1000"
+                        value={manualRefurb}
+                        onChange={(e) => setManualRefurb(e.target.value)}
+                        placeholder="0"
+                        className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2"
+                      />
                     </div>
 
                     <div className="rounded-lg border border-slate-200 bg-white p-4">
                       <p className="text-sm text-slate-500">Annual Rent</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                      <p className="mt-3 text-xl font-semibold text-slate-900">
                         {annualRent ? formatPrice(annualRent) : "N/A"}
                       </p>
                     </div>
 
                     <div className="rounded-lg border border-slate-200 bg-white p-4">
                       <p className="text-sm text-slate-500">Gross Yield</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                      <p className="mt-3 text-xl font-semibold text-slate-900">
                         {grossYield ? `${grossYield.toFixed(1)}%` : "N/A"}
                       </p>
                     </div>
+                  </div>
 
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <div className="rounded-lg border border-slate-200 bg-white p-4">
                       <p className="text-sm text-slate-500">Yield Rating</p>
                       <p className="mt-1 text-xl font-semibold text-slate-900">
                         {yieldLabel}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">Refurb Cost</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {refurbEstimate ? formatPrice(refurbEstimate) : "N/A"}
                       </p>
                     </div>
                   </div>
@@ -725,10 +782,10 @@ export default function AnalysePage() {
 
                     <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">Estimated Rent</p>
+                        <p className="text-sm text-slate-500">Monthly Rent</p>
                         <p className="mt-1 text-xl font-semibold text-slate-900">
-                          {estimatedMonthlyRent
-                            ? `${formatPrice(estimatedMonthlyRent)}/mo`
+                          {monthlyRent
+                            ? `${formatPrice(monthlyRent)}/mo`
                             : "N/A"}
                         </p>
                       </div>
@@ -748,9 +805,9 @@ export default function AnalysePage() {
                       </div>
 
                       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">Yield Rating</p>
+                        <p className="text-sm text-slate-500">Refurb Cost</p>
                         <p className="mt-1 text-xl font-semibold text-slate-900">
-                          {yieldLabel}
+                          {refurbEstimate ? formatPrice(refurbEstimate) : "N/A"}
                         </p>
                       </div>
                     </div>
@@ -772,23 +829,23 @@ export default function AnalysePage() {
 
                     <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">Indicative Rate</p>
+                        <p className="text-sm text-slate-500">Mortgage Rate</p>
                         <p className="mt-1 text-xl font-semibold text-slate-900">
-                          {indicativeRate.toFixed(1)}%
+                          {mortgageRate.toFixed(1)}%
                         </p>
                       </div>
 
                       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">10% Deposit</p>
+                        <p className="text-sm text-slate-500">Deposit</p>
                         <p className="mt-1 text-xl font-semibold text-slate-900">
-                          {deposit10 ? formatPrice(deposit10) : "N/A"}
+                          {formatPrice(depositAmount)}
                         </p>
                       </div>
 
                       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">20% Deposit</p>
+                        <p className="text-sm text-slate-500">Stamp Duty</p>
                         <p className="mt-1 text-xl font-semibold text-slate-900">
-                          {deposit20 ? formatPrice(deposit20) : "N/A"}
+                          {formatPrice(stampDutyEstimate)}
                         </p>
                       </div>
 
@@ -804,32 +861,11 @@ export default function AnalysePage() {
                       </div>
                     </div>
 
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">Stamp Duty Estimate</p>
-                        <p className="mt-1 text-xl font-semibold text-slate-900">
-                          {formatPrice(stampDutyEstimate)}
-                        </p>
-                      </div>
-
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">LotWise Verdict</p>
-                        <p className="mt-1 text-xl font-semibold text-slate-900">
-                          {homeBuyerVerdict}
-                        </p>
-                      </div>
-                    </div>
-
                     <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">
-                        Recommended next steps
+                      <p className="text-sm text-slate-500">LotWise Verdict</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {homeBuyerVerdict}
                       </p>
-                      <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                        <li>• Speak to a mortgage broker about affordability</li>
-                        <li>• Instruct a solicitor when ready to proceed</li>
-                        <li>• Book a survey before committing</li>
-                        <li>• Get renovation quotes if works are needed</li>
-                      </ul>
                     </div>
                   </div>
                 )}
