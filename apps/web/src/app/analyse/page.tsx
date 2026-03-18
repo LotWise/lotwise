@@ -14,6 +14,11 @@ type Experience =
   | "Some property experience"
   | "Experienced buyer / investor";
 
+type ConditionLevel =
+  | "Good condition"
+  | "Needs updating"
+  | "Full refurbishment";
+
 type ExtractedProperty = {
   address: string;
   price: number | string;
@@ -42,10 +47,11 @@ export default function AnalysePage() {
     useState<ExtractedProperty | null>(null);
 
   const [manualRent, setManualRent] = useState("");
-  const [manualRefurb, setManualRefurb] = useState("");
   const [depositPercent, setDepositPercent] = useState(10);
   const [mortgageRate, setMortgageRate] = useState(4.9);
   const [mortgageTerm, setMortgageTerm] = useState(30);
+  const [conditionLevel, setConditionLevel] =
+    useState<ConditionLevel>("Needs updating");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -196,12 +202,6 @@ export default function AnalysePage() {
     return (annualRent / numericPrice) * 100;
   }, [annualRent, numericPrice]);
 
-  const refurbEstimate = useMemo(() => {
-    const manual = Number(manualRefurb);
-    if (!Number.isNaN(manual) && manual >= 0) return manual;
-    return 0;
-  }, [manualRefurb]);
-
   const yieldLabel =
     grossYield >= 7
       ? "Strong"
@@ -210,6 +210,21 @@ export default function AnalysePage() {
       : grossYield > 0
       ? "Low"
       : "Unavailable";
+
+  const baseRefurbRange = useMemo(() => {
+    if (conditionLevel === "Good condition") {
+      return { low: 8000, high: 15000 };
+    }
+    if (conditionLevel === "Needs updating") {
+      return { low: 20000, high: 40000 };
+    }
+    return { low: 60000, high: 100000 };
+  }, [conditionLevel]);
+
+  const bedroomMultiplier = bedroomCount >= 4 ? 1.3 : bedroomCount === 3 ? 1.15 : 1;
+
+  const refurbLow = Math.round(baseRefurbRange.low * bedroomMultiplier);
+  const refurbHigh = Math.round(baseRefurbRange.high * bedroomMultiplier);
 
   const depositAmount = useMemo(() => {
     if (!numericPrice) return 0;
@@ -382,6 +397,49 @@ export default function AnalysePage() {
                 ))}
               </div>
 
+              <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-5">
+                <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-500">
+                  Renovation Cost Estimator
+                </p>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-3">
+                  {[
+                    "Good condition",
+                    "Needs updating",
+                    "Full refurbishment",
+                  ].map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setConditionLevel(option as ConditionLevel)}
+                      className={`rounded-md border px-4 py-3 text-left ${
+                        conditionLevel === option
+                          ? "border-slate-900 bg-slate-900 text-white"
+                          : "border-slate-300 bg-white"
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <div className="rounded-lg border border-slate-200 bg-white p-4">
+                    <p className="text-sm text-slate-500">Estimated Range</p>
+                    <p className="mt-1 text-xl font-semibold text-slate-900">
+                      {formatPrice(refurbLow)} – {formatPrice(refurbHigh)}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-white p-4">
+                    <p className="text-sm text-slate-500">Condition Assumption</p>
+                    <p className="mt-1 text-xl font-semibold text-slate-900">
+                      {conditionLevel}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {showHomeBuyerPanel && (
                 <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-5">
                   <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-500">
@@ -485,18 +543,6 @@ export default function AnalysePage() {
                     </div>
 
                     <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">Refurb Estimate</p>
-                      <input
-                        type="number"
-                        step="1000"
-                        value={manualRefurb}
-                        onChange={(e) => setManualRefurb(e.target.value)}
-                        placeholder="0"
-                        className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2"
-                      />
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200 bg-white p-4">
                       <p className="text-sm text-slate-500">Annual Rent</p>
                       <p className="mt-3 text-xl font-semibold text-slate-900">
                         {annualRent ? formatPrice(annualRent) : "N/A"}
@@ -509,20 +555,11 @@ export default function AnalysePage() {
                         {grossYield ? `${grossYield.toFixed(1)}%` : "N/A"}
                       </p>
                     </div>
-                  </div>
 
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <div className="rounded-lg border border-slate-200 bg-white p-4">
                       <p className="text-sm text-slate-500">Yield Rating</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                      <p className="mt-3 text-xl font-semibold text-slate-900">
                         {yieldLabel}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">Refurb Cost</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {refurbEstimate ? formatPrice(refurbEstimate) : "N/A"}
                       </p>
                     </div>
                   </div>
@@ -774,6 +811,35 @@ export default function AnalysePage() {
                   </div>
                 </div>
 
+                <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+                  <h3 className="text-xl font-semibold">
+                    Renovation Cost Estimate
+                  </h3>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-3">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-sm text-slate-500">Condition</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {conditionLevel}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-sm text-slate-500">Low Estimate</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {formatPrice(refurbLow)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-sm text-slate-500">High Estimate</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-900">
+                        {formatPrice(refurbHigh)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 {showBuyToLetPanel && (
                   <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
                     <h3 className="text-xl font-semibold">
@@ -807,7 +873,7 @@ export default function AnalysePage() {
                       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                         <p className="text-sm text-slate-500">Refurb Cost</p>
                         <p className="mt-1 text-xl font-semibold text-slate-900">
-                          {refurbEstimate ? formatPrice(refurbEstimate) : "N/A"}
+                          {formatPrice(refurbLow)} – {formatPrice(refurbHigh)}
                         </p>
                       </div>
                     </div>
