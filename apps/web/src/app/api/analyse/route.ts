@@ -1,5 +1,101 @@
 import { NextResponse } from "next/server";
 
+function firstValue(...values: unknown[]) {
+  for (const value of values) {
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return "";
+}
+
+function normaliseImages(property: any): string[] {
+  const raw =
+    property?.images ||
+    property?.imageUrls ||
+    property?.propertyImages ||
+    property?.photos ||
+    property?.imagesUrls ||
+    [];
+
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .map((item) => {
+      if (typeof item === "string") return item;
+      return (
+        item?.url ||
+        item?.src ||
+        item?.imageUrl ||
+        item?.mainImageUrl ||
+        item?.original ||
+        ""
+      );
+    })
+    .filter(Boolean);
+}
+
+function normaliseProperty(property: any, fallbackUrl: string) {
+  const address = firstValue(
+    property?.displayAddress,
+    property?.address,
+    property?.propertyAddress,
+    property?.location?.displayAddress
+  );
+
+  const title = firstValue(
+    property?.title,
+    property?.heading,
+    property?.summary,
+    address,
+    "Property listing"
+  );
+
+  const price = firstValue(
+    property?.price,
+    property?.priceValue,
+    property?.guidePrice,
+    property?.salePrice,
+    property?.amount
+  );
+
+  const bedrooms = firstValue(
+    property?.bedrooms,
+    property?.bedroomCount,
+    property?.beds,
+    property?.bedroomsCount
+  );
+
+  const bathrooms = firstValue(
+    property?.bathrooms,
+    property?.bathroomCount,
+    property?.baths,
+    property?.bathroomsCount
+  );
+
+  const propertyType = firstValue(
+    property?.propertyType,
+    property?.type,
+    property?.propertySubType,
+    property?.category
+  );
+
+  const images = normaliseImages(property);
+
+  return {
+    address: String(address || ""),
+    title: String(title || ""),
+    price,
+    bedrooms,
+    bathrooms,
+    propertyType: String(propertyType || ""),
+    description: String(property?.description || property?.summary || ""),
+    images,
+    heroImage: images[0] || "",
+    coordinates: property?.coordinates || property?.location?.coordinates || null,
+    url: property?.url || property?.propertyUrl || fallbackUrl,
+    raw: property,
+  };
+}
+
 export async function POST(req: Request) {
   try {
     const { url } = await req.json();
@@ -27,9 +123,7 @@ export async function POST(req: Request) {
       `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${token}`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           propertyUrls: [{ url }],
           fullPropertyDetails: true,
@@ -40,39 +134,25 @@ export async function POST(req: Request) {
       }
     );
 
-    const properties = await response.json();
+    const data = await response.json();
 
     if (!response.ok) {
       return NextResponse.json(
-        {
-          error: "Failed to fetch property data",
-          details: properties,
-        },
+        { error: "Failed to fetch property data", details: data },
         { status: 500 }
       );
     }
 
-    const property = Array.isArray(properties) ? properties[0] : null;
+    const property = Array.isArray(data) ? data[0] : data?.items?.[0] || data;
 
     if (!property) {
       return NextResponse.json(
-        { error: "Property not found", details: properties },
+        { error: "Property not found", details: data },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({
-      address: property.displayAddress || "",
-      price: property.price || "",
-      bedrooms: property.bedrooms || "",
-      bathrooms: property.bathrooms || "",
-      propertyType: property.propertyType || "",
-      description: property.description || "",
-      images: property.images || [],
-      coordinates: property.coordinates || null,
-      title: property.title || "",
-      url: property.url || url,
-    });
+    return NextResponse.json(normaliseProperty(property, url));
   } catch (error) {
     return NextResponse.json(
       {
