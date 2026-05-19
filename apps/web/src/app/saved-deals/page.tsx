@@ -1,18 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type SavedDeal = {
   id: string;
   title?: string;
-  address: string;
-  property: string;
+  address?: string;
+  property?: string;
   strategy: string;
   score: number;
   price: number;
   verdict: string;
   savedAt: string;
   image?: string;
+  heroImage?: string;
   bedrooms?: number | string;
   bathrooms?: number | string;
   propertyType?: string;
@@ -29,14 +30,15 @@ const statuses = [
   "Purchased",
 ];
 
-function getDisplayTitle(deal: SavedDeal) {
-  if (deal.title && !deal.title.startsWith("http")) return deal.title;
-  if (deal.address && !deal.address.startsWith("http")) return deal.address;
+function cleanTitle(deal: SavedDeal) {
+  const candidate = deal.title || deal.address || "";
+
+  if (candidate && !candidate.startsWith("http")) return candidate;
 
   try {
-    const url = new URL(deal.property || deal.address);
-    const propertyId = url.pathname.split("/").filter(Boolean).pop();
-    return propertyId ? `Rightmove Property ${propertyId}` : "Saved Property";
+    const url = new URL(deal.property || deal.address || "");
+    const id = url.pathname.split("/").filter(Boolean).pop();
+    return id ? `Rightmove Property ${id}` : "Saved Property";
   } catch {
     return "Saved Property";
   }
@@ -46,28 +48,23 @@ export default function SavedDealsPage() {
   const [savedDeals, setSavedDeals] = useState<SavedDeal[]>([]);
 
   useEffect(() => {
-    const deals = JSON.parse(
-      localStorage.getItem("lotwise_saved_deals") || "[]"
-    );
+    const deals = JSON.parse(localStorage.getItem("lotwise_saved_deals") || "[]");
     setSavedDeals(deals);
   }, []);
+
+  const dealCount = savedDeals.length;
+
+  const averageScore = useMemo(() => {
+    if (!savedDeals.length) return 0;
+    return Math.round(
+      savedDeals.reduce((sum, deal) => sum + (deal.score || 0), 0) /
+        savedDeals.length
+    );
+  }, [savedDeals]);
 
   const saveDeals = (deals: SavedDeal[]) => {
     setSavedDeals(deals);
     localStorage.setItem("lotwise_saved_deals", JSON.stringify(deals));
-  };
-
-  const formatPrice = (value: number) => {
-    if (!value) return "N/A";
-    return new Intl.NumberFormat("en-GB", {
-      style: "currency",
-      currency: "GBP",
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const deleteDeal = (id: string) => {
-    saveDeals(savedDeals.filter((deal) => deal.id !== id));
   };
 
   const updateDeal = (id: string, updates: Partial<SavedDeal>) => {
@@ -78,12 +75,30 @@ export default function SavedDealsPage() {
     );
   };
 
+  const deleteDeal = (id: string) => {
+    saveDeals(savedDeals.filter((deal) => deal.id !== id));
+  };
+
+  const formatPrice = (value?: number) => {
+    if (!value) return "N/A";
+    return new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: "GBP",
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
   return (
     <main className="min-h-screen bg-white text-slate-900">
       <section className="mx-auto max-w-6xl px-6 py-20">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight">Saved Deals</h1>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+              LotWise Dashboard
+            </p>
+            <h1 className="mt-2 text-4xl font-bold tracking-tight">
+              Saved Deals
+            </h1>
             <p className="mt-3 text-lg text-slate-600">
               Review, compare and track properties you’ve saved in LotWise.
             </p>
@@ -92,6 +107,12 @@ export default function SavedDealsPage() {
           <a href="/analyse" className="rounded-md bg-black px-5 py-3 text-white">
             Analyse Another Property
           </a>
+        </div>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <SummaryCard label="Saved Properties" value={String(dealCount)} />
+          <SummaryCard label="Average Score" value={dealCount ? `${averageScore}/100` : "N/A"} />
+          <SummaryCard label="Active Deals" value={String(savedDeals.filter((d) => d.status !== "Rejected").length)} />
         </div>
 
         {savedDeals.length === 0 ? (
@@ -106,24 +127,25 @@ export default function SavedDealsPage() {
         ) : (
           <div className="mt-10 grid gap-6">
             {savedDeals.map((deal) => {
-              const title = getDisplayTitle(deal);
+              const title = cleanTitle(deal);
+              const image = deal.image || deal.heroImage || "";
 
               return (
                 <div
                   key={deal.id}
-                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white"
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                 >
-                  <div className="grid gap-0 md:grid-cols-[280px_1fr]">
+                  <div className="grid gap-0 md:grid-cols-[300px_1fr]">
                     <div className="bg-slate-100">
-                      {deal.image ? (
+                      {image ? (
                         <img
-                          src={deal.image}
+                          src={image}
                           alt={title}
-                          className="h-full min-h-[220px] w-full object-cover"
+                          className="h-full min-h-[250px] w-full object-cover"
                         />
                       ) : (
-                        <div className="flex h-full min-h-[220px] items-center justify-center p-6 text-center text-sm text-slate-500">
-                          No image saved yet
+                        <div className="flex h-full min-h-[250px] items-center justify-center p-6 text-center text-sm text-slate-500">
+                          No property image saved yet
                         </div>
                       )}
                     </div>
@@ -148,10 +170,10 @@ export default function SavedDealsPage() {
                             Saved on {new Date(deal.savedAt).toLocaleString("en-GB")}
                           </p>
 
-                          {(deal.bedrooms || deal.propertyType) && (
+                          {(deal.propertyType || deal.bedrooms || deal.bathrooms) && (
                             <p className="mt-2 text-sm text-slate-600">
-                              {deal.propertyType || "Property"}{" "}
-                              {deal.bedrooms ? `• ${deal.bedrooms} bed` : ""}
+                              {deal.propertyType || "Property"}
+                              {deal.bedrooms ? ` • ${deal.bedrooms} bed` : ""}
                               {deal.bathrooms ? ` • ${deal.bathrooms} bath` : ""}
                             </p>
                           )}
@@ -167,9 +189,9 @@ export default function SavedDealsPage() {
                       </div>
 
                       <div className="mt-6 grid gap-4 md:grid-cols-4">
-                        <Card label="Score" value={`${deal.score} / 100`} />
+                        <Card label="Score" value={`${deal.score || 0} / 100`} />
                         <Card label="Guide Price" value={formatPrice(deal.price)} />
-                        <Card label="Verdict" value={deal.verdict} />
+                        <Card label="Verdict" value={deal.verdict || "N/A"} />
 
                         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                           <p className="text-sm text-slate-500">Status</p>
@@ -221,6 +243,15 @@ export default function SavedDealsPage() {
         )}
       </section>
     </main>
+  );
+}
+
+function SummaryCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <p className="text-sm text-slate-500">{label}</p>
+      <p className="mt-2 text-2xl font-bold text-slate-900">{value}</p>
+    </div>
   );
 }
 
