@@ -1,105 +1,62 @@
-export default function RequestHelp() {
+export default function RequestHelpPage() {
   return (
     <main className="min-h-screen bg-white text-slate-900">
       <section className="mx-auto max-w-3xl px-6 py-20">
-
-        <h1 className="text-4xl font-bold">
+        <h1 className="text-4xl font-bold tracking-tight">
           Get Help With This Property
         </h1>
 
         <p className="mt-4 text-lg text-slate-600">
-          Request quotes from trusted professionals to help with your property purchase.
+          Tell us what help you need and LotWise will connect you with relevant professionals.
         </p>
 
         <form
-          action="https://formspree.io/f/xdawkvre"
+          action="https://formspree.io/f/YOUR_FORMSPREE_ID"
           method="POST"
-          className="mt-10 flex flex-col gap-6"
+          className="mt-10 space-y-5 rounded-xl border border-slate-200 p-6"
         >
+          <input
+            name="name"
+            placeholder="Your name"
+            className="w-full rounded-md border border-slate-300 px-4 py-3"
+          />
 
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Property Address
-            </label>
-            <input
-              type="text"
-              name="property"
-              placeholder="Enter property address"
-              className="w-full rounded-md border border-slate-300 px-4 py-3"
-            />
-          </div>
+          <input
+            name="email"
+            type="email"
+            placeholder="Your email"
+            className="w-full rounded-md border border-slate-300 px-4 py-3"
+          />
 
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              What help do you need?
-            </label>
+          <input
+            name="property"
+            placeholder="Property link or address"
+            className="w-full rounded-md border border-slate-300 px-4 py-3"
+          />
 
-            <div className="flex flex-col gap-2">
-
-              <label>
-                <input type="checkbox" name="service" value="Solicitor" /> Solicitor
-              </label>
-
-              <label>
-                <input type="checkbox" name="service" value="Mortgage Broker" /> Mortgage Broker
-              </label>
-
-              <label>
-                <input type="checkbox" name="service" value="Surveyor" /> Surveyor
-              </label>
-
-              <label>
-                <input type="checkbox" name="service" value="Builder Quote" /> Builder Quote
-              </label>
-
-              <label>
-                <input type="checkbox" name="service" value="Structural Engineer" /> Structural Engineer
-              </label>
-
-              <label>
-                <input type="checkbox" name="service" value="Architect" /> Architect
-              </label>
-
-              <label>
-                <input type="checkbox" name="service" value="Planning Consultant" /> Planning Consultant
-              </label>
-
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Your Email
-            </label>
-            <input
-              type="email"
-              name="email"
-              required
-              placeholder="Enter your email"
-              className="w-full rounded-md border border-slate-300 px-4 py-3"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Additional Details
-            </label>
-            <textarea
-              name="message"
-              placeholder="Tell us about the property or work needed"
-              className="w-full rounded-md border border-slate-300 px-4 py-3"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="rounded-md bg-black px-6 py-3 text-white"
+          <select
+            name="helpNeeded"
+            className="w-full rounded-md border border-slate-300 px-4 py-3"
           >
-            Request Quotes
+            <option value="">What help do you need?</option>
+            <option>Mortgage broker</option>
+            <option>Solicitor</option>
+            <option>Surveyor</option>
+            <option>Builder / renovation quote</option>
+            <option>Architect / planning advice</option>
+            <option>General buying advice</option>
+          </select>
+
+          <textarea
+            name="message"
+            placeholder="Tell us more..."
+            className="min-h-[140px] w-full rounded-md border border-slate-300 px-4 py-3"
+          />
+
+          <button className="rounded-md bg-black px-6 py-3 text-white">
+            Submit Request
           </button>
-
         </form>
-
       </section>
     </main>
   );

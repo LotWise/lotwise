@@ -32,6 +32,17 @@ type ExtractedProperty = {
   url: string;
 };
 
+type SavedDeal = {
+  id: string;
+  address: string;
+  property: string;
+  strategy: string;
+  score: number;
+  price: number;
+  verdict: string;
+  savedAt: string;
+};
+
 export default function AnalysePage() {
   const [step, setStep] = useState(1);
   const [strategy, setStrategy] = useState<Strategy | "">("");
@@ -77,9 +88,7 @@ export default function AnalysePage() {
 
         const response = await fetch("/api/analyse", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: propertyFromUrl }),
         });
 
@@ -103,10 +112,7 @@ export default function AnalysePage() {
 
   useEffect(() => {
     if (step === 4) {
-      const timer = setTimeout(() => {
-        setStep(5);
-      }, 2500);
-
+      const timer = setTimeout(() => setStep(5), 2500);
       return () => clearTimeout(timer);
     }
   }, [step]);
@@ -118,48 +124,11 @@ export default function AnalysePage() {
       ? "text-slate-500"
       : "text-slate-400";
 
-  const score = 74;
-  const strategyFit = 78;
-  const investmentQuality = 72;
-  const riskLevel = 55;
-
-  const scoreLabel =
-    score >= 80
-      ? "Excellent Opportunity"
-      : score >= 70
-      ? "Strong Deal"
-      : score >= 55
-      ? "Potential but Needs Work"
-      : score >= 40
-      ? "Risky"
-      : "Avoid";
-
-  const scoreColor =
-    score >= 80
-      ? "text-green-600"
-      : score >= 70
-      ? "text-green-500"
-      : score >= 55
-      ? "text-amber-500"
-      : score >= 40
-      ? "text-orange-500"
-      : "text-red-600";
-
-  const propertyDisplay =
-    address || extractedProperty?.title || property || "Property Analysis";
-
-  const requestHelpHref = `/request-help?property=${encodeURIComponent(
-    propertyDisplay
-  )}`;
-
   const formatPrice = (value: number | string | undefined) => {
     if (value === undefined || value === null || value === "") return "N/A";
-
     const numeric =
       typeof value === "number" ? value : Number(String(value).replace(/,/g, ""));
-
     if (Number.isNaN(numeric)) return String(value);
-
     return new Intl.NumberFormat("en-GB", {
       style: "currency",
       currency: "GBP",
@@ -168,8 +137,7 @@ export default function AnalysePage() {
   };
 
   const bedroomCount = useMemo(() => {
-    const raw = extractedProperty?.bedrooms;
-    const parsed = Number(raw);
+    const parsed = Number(extractedProperty?.bedrooms);
     return Number.isNaN(parsed) ? 0 : parsed;
   }, [extractedProperty]);
 
@@ -185,8 +153,7 @@ export default function AnalysePage() {
     if (bedroomCount === 1) return 1100;
     if (bedroomCount === 2) return 1400;
     if (bedroomCount === 3) return 1700;
-    if (bedroomCount >= 4) return 2100;
-    return 0;
+    return 2100;
   }, [bedroomCount]);
 
   const monthlyRent = useMemo(() => {
@@ -203,25 +170,16 @@ export default function AnalysePage() {
   }, [annualRent, numericPrice]);
 
   const yieldLabel =
-    grossYield >= 7
-      ? "Strong"
-      : grossYield >= 5
-      ? "Moderate"
-      : grossYield > 0
-      ? "Low"
-      : "Unavailable";
+    grossYield >= 7 ? "Strong" : grossYield >= 5 ? "Moderate" : grossYield > 0 ? "Low" : "Unavailable";
 
   const baseRefurbRange = useMemo(() => {
-    if (conditionLevel === "Good condition") {
-      return { low: 8000, high: 15000 };
-    }
-    if (conditionLevel === "Needs updating") {
-      return { low: 20000, high: 40000 };
-    }
+    if (conditionLevel === "Good condition") return { low: 8000, high: 15000 };
+    if (conditionLevel === "Needs updating") return { low: 20000, high: 40000 };
     return { low: 60000, high: 100000 };
   }, [conditionLevel]);
 
-  const bedroomMultiplier = bedroomCount >= 4 ? 1.3 : bedroomCount === 3 ? 1.15 : 1;
+  const bedroomMultiplier =
+    bedroomCount >= 4 ? 1.3 : bedroomCount === 3 ? 1.15 : 1;
 
   const refurbLow = Math.round(baseRefurbRange.low * bedroomMultiplier);
   const refurbHigh = Math.round(baseRefurbRange.high * bedroomMultiplier);
@@ -261,6 +219,62 @@ export default function AnalysePage() {
   const showBuyToLetPanel = strategy === "Buy to Let";
   const showHomeBuyerPanel = strategy === "First-Time Buyer / New Home";
 
+  const score = useMemo(() => {
+    let base = 60;
+
+    if (showBuyToLetPanel) {
+      if (grossYield >= 7) base += 20;
+      else if (grossYield >= 5) base += 10;
+      else if (grossYield > 0) base -= 5;
+    }
+
+    if (conditionLevel === "Good condition") base += 8;
+    if (conditionLevel === "Full refurbishment") base -= 8;
+
+    if (showHomeBuyerPanel) {
+      if (estimatedMonthlyMortgage && estimatedMonthlyMortgage < 1500) base += 12;
+      else if (estimatedMonthlyMortgage > 2500) base -= 8;
+    }
+
+    return Math.max(25, Math.min(92, Math.round(base)));
+  }, [showBuyToLetPanel, showHomeBuyerPanel, grossYield, conditionLevel, estimatedMonthlyMortgage]);
+
+  const strategyFit = Math.min(95, Math.max(50, score + 4));
+  const investmentQuality = Math.min(95, Math.max(45, score - 2));
+  const riskLevel =
+    conditionLevel === "Full refurbishment"
+      ? 72
+      : conditionLevel === "Needs updating"
+      ? 55
+      : 38;
+
+  const scoreLabel =
+    score >= 80
+      ? "Excellent Opportunity"
+      : score >= 70
+      ? "Strong Deal"
+      : score >= 55
+      ? "Potential but Needs Work"
+      : score >= 40
+      ? "Risky"
+      : "Avoid";
+
+  const scoreColor =
+    score >= 80
+      ? "text-green-600"
+      : score >= 70
+      ? "text-green-500"
+      : score >= 55
+      ? "text-amber-500"
+      : score >= 40
+      ? "text-orange-500"
+      : "text-red-600";
+
+  const propertyDisplay =
+    address || extractedProperty?.title || property || "Property Analysis";
+
+  const requestHelpHref = `/request-help?property=${encodeURIComponent(propertyDisplay)}`;
+
   const buyToLetVerdict =
     grossYield >= 7
       ? "Strong Buy to Let Opportunity"
@@ -279,15 +293,45 @@ export default function AnalysePage() {
       ? "Higher Monthly Commitment"
       : "Mortgage estimate unavailable";
 
+  const currentVerdict = showBuyToLetPanel
+    ? buyToLetVerdict
+    : showHomeBuyerPanel
+    ? homeBuyerVerdict
+    : scoreLabel;
+
+  const handleSaveDeal = () => {
+    if (typeof window === "undefined") return;
+
+    const newDeal: SavedDeal = {
+      id: crypto.randomUUID(),
+      address: propertyDisplay,
+      property,
+      strategy: strategy || "Undecided",
+      score,
+      price: numericPrice,
+      verdict: currentVerdict,
+      savedAt: new Date().toISOString(),
+    };
+
+    const existingDeals: SavedDeal[] = JSON.parse(
+      localStorage.getItem("lotwise_saved_deals") || "[]"
+    );
+
+    const updatedDeals = [newDeal, ...existingDeals];
+    localStorage.setItem("lotwise_saved_deals", JSON.stringify(updatedDeals));
+
+    window.location.href = "/saved-deals";
+  };
+
   return (
     <main className="min-h-screen bg-white text-slate-900">
       <section className="mx-auto max-w-5xl px-6 py-20">
         <h1 className="text-4xl font-bold tracking-tight">
-          Analyse Any Property Deal
+          Should I Buy This Property?
         </h1>
 
         <p className="mt-4 text-lg text-slate-600">
-          Use LotWise to analyse a property before you buy.
+          LotWise analyses any property and gives you a clear buying verdict.
         </p>
 
         {(property || loadingProperty || propertyError || extractedProperty) && (
@@ -309,55 +353,47 @@ export default function AnalysePage() {
             )}
 
             {extractedProperty && (
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div className="rounded-lg border border-slate-200 bg-white p-4">
-                  <p className="text-sm text-slate-500">Detected Address</p>
-                  <p className="mt-1 font-medium text-slate-900">
-                    {extractedProperty.address || "N/A"}
-                  </p>
-                </div>
+              <>
+                {extractedProperty.images && extractedProperty.images.length > 0 && (
+                  <div className="mt-5 space-y-3">
+                    <img
+                      src={extractedProperty.images[0]}
+                      alt="Property"
+                      className="h-[420px] w-full rounded-2xl object-cover"
+                    />
 
-                <div className="rounded-lg border border-slate-200 bg-white p-4">
-                  <p className="text-sm text-slate-500">Guide Price</p>
-                  <p className="mt-1 font-medium text-slate-900">
-                    {formatPrice(extractedProperty.price)}
-                  </p>
-                </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {extractedProperty.images.slice(1, 5).map((image, index) => (
+                        <img
+                          key={index}
+                          src={image}
+                          alt={`Property image ${index + 2}`}
+                          className="h-24 w-full rounded-xl object-cover"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-                <div className="rounded-lg border border-slate-200 bg-white p-4">
-                  <p className="text-sm text-slate-500">Property Type</p>
-                  <p className="mt-1 font-medium text-slate-900">
-                    {extractedProperty.propertyType || "N/A"}
-                  </p>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <InfoCard label="Detected Address" value={extractedProperty.address || "N/A"} />
+                  <InfoCard label="Guide Price" value={formatPrice(extractedProperty.price)} />
+                  <InfoCard label="Property Type" value={extractedProperty.propertyType || "N/A"} />
+                  <InfoCard
+                    label="Beds / Baths"
+                    value={`${extractedProperty.bedrooms || "?"} bed • ${extractedProperty.bathrooms || "?"} bath`}
+                  />
                 </div>
-
-                <div className="rounded-lg border border-slate-200 bg-white p-4">
-                  <p className="text-sm text-slate-500">Beds / Baths</p>
-                  <p className="mt-1 font-medium text-slate-900">
-                    {extractedProperty.bedrooms || "?"} bed •{" "}
-                    {extractedProperty.bathrooms || "?"} bath
-                  </p>
-                </div>
-              </div>
+              </>
             )}
           </div>
         )}
 
         <div className="mt-10 flex flex-wrap gap-4 text-sm">
-          <span className={stepClass(1)}>
-            {step > 1 ? "✓" : "●"} Strategy
-          </span>
-          <span className={stepClass(2)}>
-            {step > 2 ? "✓" : step === 2 ? "●" : "○"} Experience
-          </span>
-          <span className={stepClass(3)}>
-            {step > 3 ? "✓" : step === 3 ? "●" : "○"} Property
-          </span>
-          <span
-            className={
-              step >= 4 ? "font-semibold text-slate-900" : "text-slate-400"
-            }
-          >
+          <span className={stepClass(1)}>{step > 1 ? "✓" : "●"} Strategy</span>
+          <span className={stepClass(2)}>{step > 2 ? "✓" : step === 2 ? "●" : "○"} Experience</span>
+          <span className={stepClass(3)}>{step > 3 ? "✓" : step === 3 ? "●" : "○"} Property</span>
+          <span className={step >= 4 ? "font-semibold text-slate-900" : "text-slate-400"}>
             {step === 5 ? "✓" : "●"} Analyse
           </span>
         </div>
@@ -365,13 +401,9 @@ export default function AnalysePage() {
         <div className="mt-12 rounded-xl border border-slate-200 p-8">
           {step === 1 && (
             <>
-              <h2 className="text-2xl font-semibold">
-                What is your strategy?
-              </h2>
-
+              <h2 className="text-2xl font-semibold">What is your strategy?</h2>
               <p className="mt-3 text-slate-600">
-                We’ll tailor the analysis and support based on what you’re
-                trying to do with this property.
+                We’ll tailor the analysis and support based on what you’re trying to do with this property.
               </p>
 
               <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -397,180 +429,43 @@ export default function AnalysePage() {
                 ))}
               </div>
 
-              <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-500">
-                  Renovation Cost Estimator
-                </p>
-
-                <div className="mt-4 grid gap-4 md:grid-cols-3">
-                  {[
-                    "Good condition",
-                    "Needs updating",
-                    "Full refurbishment",
-                  ].map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => setConditionLevel(option as ConditionLevel)}
-                      className={`rounded-md border px-4 py-3 text-left ${
-                        conditionLevel === option
-                          ? "border-slate-900 bg-slate-900 text-white"
-                          : "border-slate-300 bg-white"
-                      }`}
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <div className="rounded-lg border border-slate-200 bg-white p-4">
-                    <p className="text-sm text-slate-500">Estimated Range</p>
-                    <p className="mt-1 text-xl font-semibold text-slate-900">
-                      {formatPrice(refurbLow)} – {formatPrice(refurbHigh)}
-                    </p>
-                  </div>
-
-                  <div className="rounded-lg border border-slate-200 bg-white p-4">
-                    <p className="text-sm text-slate-500">Condition Assumption</p>
-                    <p className="mt-1 text-xl font-semibold text-slate-900">
-                      {conditionLevel}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <RenovationEstimator
+                conditionLevel={conditionLevel}
+                setConditionLevel={setConditionLevel}
+                formatPrice={formatPrice}
+                refurbLow={refurbLow}
+                refurbHigh={refurbHigh}
+              />
 
               {showHomeBuyerPanel && (
-                <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-500">
-                    Home Buyer Snapshot
-                  </p>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">Mortgage Rate</p>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={mortgageRate}
-                        onChange={(e) =>
-                          setMortgageRate(Number(e.target.value) || 0)
-                        }
-                        className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2"
-                      />
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">Deposit %</p>
-                      <input
-                        type="number"
-                        step="1"
-                        value={depositPercent}
-                        onChange={(e) =>
-                          setDepositPercent(Number(e.target.value) || 0)
-                        }
-                        className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2"
-                      />
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">Mortgage Term</p>
-                      <input
-                        type="number"
-                        step="1"
-                        value={mortgageTerm}
-                        onChange={(e) =>
-                          setMortgageTerm(Number(e.target.value) || 0)
-                        }
-                        className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2"
-                      />
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">
-                        Est. Monthly Mortgage
-                      </p>
-                      <p className="mt-3 text-xl font-semibold text-slate-900">
-                        {estimatedMonthlyMortgage
-                          ? `${formatPrice(estimatedMonthlyMortgage)}/mo`
-                          : "N/A"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">Deposit Amount</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {formatPrice(depositAmount)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">Stamp Duty Estimate</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {formatPrice(stampDutyEstimate)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
-                    <p className="text-sm text-slate-500">LotWise Verdict</p>
-                    <p className="mt-1 text-xl font-semibold text-slate-900">
-                      {homeBuyerVerdict}
-                    </p>
-                  </div>
-                </div>
+                <HomeBuyerPanel
+                  mortgageRate={mortgageRate}
+                  setMortgageRate={setMortgageRate}
+                  depositPercent={depositPercent}
+                  setDepositPercent={setDepositPercent}
+                  mortgageTerm={mortgageTerm}
+                  setMortgageTerm={setMortgageTerm}
+                  estimatedMonthlyMortgage={estimatedMonthlyMortgage}
+                  depositAmount={depositAmount}
+                  stampDutyEstimate={stampDutyEstimate}
+                  homeBuyerVerdict={homeBuyerVerdict}
+                  formatPrice={formatPrice}
+                  editable
+                />
               )}
 
               {showBuyToLetPanel && (
-                <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-500">
-                    Quick Deal Analysis
-                  </p>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">Monthly Rent</p>
-                      <input
-                        type="number"
-                        step="50"
-                        value={manualRent}
-                        onChange={(e) => setManualRent(e.target.value)}
-                        placeholder={String(suggestedMonthlyRent || "")}
-                        className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2"
-                      />
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">Annual Rent</p>
-                      <p className="mt-3 text-xl font-semibold text-slate-900">
-                        {annualRent ? formatPrice(annualRent) : "N/A"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">Gross Yield</p>
-                      <p className="mt-3 text-xl font-semibold text-slate-900">
-                        {grossYield ? `${grossYield.toFixed(1)}%` : "N/A"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">Yield Rating</p>
-                      <p className="mt-3 text-xl font-semibold text-slate-900">
-                        {yieldLabel}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
-                    <p className="text-sm text-slate-500">LotWise Verdict</p>
-                    <p className="mt-1 text-xl font-semibold text-slate-900">
-                      {buyToLetVerdict}
-                    </p>
-                  </div>
-                </div>
+                <BuyToLetPanel
+                  manualRent={manualRent}
+                  setManualRent={setManualRent}
+                  suggestedMonthlyRent={suggestedMonthlyRent}
+                  annualRent={annualRent}
+                  grossYield={grossYield}
+                  yieldLabel={yieldLabel}
+                  buyToLetVerdict={buyToLetVerdict}
+                  formatPrice={formatPrice}
+                  editable
+                />
               )}
 
               <div className="mt-8 flex justify-end">
@@ -588,24 +483,16 @@ export default function AnalysePage() {
 
           {step === 2 && (
             <>
-              <h2 className="text-2xl font-semibold">
-                What is your experience with property?
-              </h2>
+              <h2 className="text-2xl font-semibold">What is your experience with property?</h2>
 
               <div className="mt-6 grid grid-cols-1 gap-4">
-                {[
-                  "First-time buyer",
-                  "Some property experience",
-                  "Experienced buyer / investor",
-                ].map((option) => (
+                {["First-time buyer", "Some property experience", "Experienced buyer / investor"].map((option) => (
                   <button
                     key={option}
                     type="button"
                     onClick={() => setExperience(option as Experience)}
                     className={`rounded-md border px-4 py-3 text-left ${
-                      experience === option
-                        ? "border-slate-900 bg-slate-900 text-white"
-                        : "border-slate-300"
+                      experience === option ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300"
                     }`}
                   >
                     {option}
@@ -614,11 +501,7 @@ export default function AnalysePage() {
               </div>
 
               <div className="mt-8 flex justify-between">
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="rounded-md border border-slate-300 px-6 py-3"
-                >
+                <button type="button" onClick={() => setStep(1)} className="rounded-md border border-slate-300 px-6 py-3">
                   Back
                 </button>
 
@@ -639,58 +522,23 @@ export default function AnalysePage() {
               <h2 className="text-2xl font-semibold">Property details</h2>
 
               <div className="mt-6 space-y-5">
-                <div>
-                  <label className="mb-2 block text-sm font-medium">
-                    Property link
-                  </label>
-                  <input
-                    type="url"
-                    value={property}
-                    onChange={(e) => setProperty(e.target.value)}
-                    placeholder="Paste property listing URL"
-                    className="w-full rounded-md border border-slate-300 px-4 py-3"
-                  />
-                </div>
+                <Input label="Property link" type="url" value={property} onChange={setProperty} placeholder="Paste property listing URL" />
+                <Input label="Property address" type="text" value={address} onChange={setAddress} placeholder="Enter property address" />
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium">
-                    Property address
-                  </label>
-                  <input
-                    type="text"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Enter property address"
-                    className="w-full rounded-md border border-slate-300 px-4 py-3"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium">
-                    Legal pack upload
-                  </label>
+                  <label className="mb-2 block text-sm font-medium">Legal pack upload</label>
                   <input
                     type="file"
                     accept=".pdf"
-                    onChange={(e) =>
-                      setLegalPackName(e.target.files?.[0]?.name || "")
-                    }
+                    onChange={(e) => setLegalPackName(e.target.files?.[0]?.name || "")}
                     className="w-full rounded-md border border-slate-300 px-4 py-3"
                   />
-                  {legalPackName && (
-                    <p className="mt-2 text-sm text-slate-500">
-                      Selected: {legalPackName}
-                    </p>
-                  )}
+                  {legalPackName && <p className="mt-2 text-sm text-slate-500">Selected: {legalPackName}</p>}
                 </div>
               </div>
 
               <div className="mt-8 flex justify-between">
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  className="rounded-md border border-slate-300 px-6 py-3"
-                >
+                <button type="button" onClick={() => setStep(2)} className="rounded-md border border-slate-300 px-6 py-3">
                   Back
                 </button>
 
@@ -709,7 +557,6 @@ export default function AnalysePage() {
           {step === 4 && (
             <>
               <h2 className="text-2xl font-semibold">Analysing property...</h2>
-
               <div className="mt-6 space-y-4 text-slate-600">
                 <p>✓ Identifying property details</p>
                 <p>✓ Reviewing market indicators</p>
@@ -722,10 +569,7 @@ export default function AnalysePage() {
           {step === 5 && (
             <div className="space-y-10">
               <div className="border-b border-slate-200 pb-8">
-                <p className="text-sm uppercase tracking-[0.2em] text-slate-500">
-                  Analysis Report
-                </p>
-
+                <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Analysis Report</p>
                 <h2 className="mt-3 text-3xl font-bold">{propertyDisplay}</h2>
 
                 <div className="mt-8 rounded-2xl bg-slate-50 p-8">
@@ -735,18 +579,8 @@ export default function AnalysePage() {
                     </p>
 
                     <div className="mt-6 relative flex h-48 w-48 items-center justify-center">
-                      <svg
-                        className="h-48 w-48 -rotate-90"
-                        viewBox="0 0 120 120"
-                      >
-                        <circle
-                          cx="60"
-                          cy="60"
-                          r="52"
-                          fill="none"
-                          stroke="#e2e8f0"
-                          strokeWidth="10"
-                        />
+                      <svg className="h-48 w-48 -rotate-90" viewBox="0 0 120 120">
+                        <circle cx="60" cy="60" r="52" fill="none" stroke="#e2e8f0" strokeWidth="10" />
                         <circle
                           cx="60"
                           cy="60"
@@ -757,240 +591,81 @@ export default function AnalysePage() {
                           strokeLinecap="round"
                           className={scoreColor}
                           strokeDasharray={`${2 * Math.PI * 52}`}
-                          strokeDashoffset={`${
-                            2 * Math.PI * 52 * (1 - score / 100)
-                          }`}
+                          strokeDashoffset={`${2 * Math.PI * 52 * (1 - score / 100)}`}
                         />
                       </svg>
 
                       <div className="absolute flex flex-col items-center">
-                        <span className={`text-5xl font-bold ${scoreColor}`}>
-                          {score}
-                        </span>
+                        <span className={`text-5xl font-bold ${scoreColor}`}>{score}</span>
                         <span className="text-sm text-slate-400">/ 100</span>
                       </div>
                     </div>
 
-                    <p className={`mt-4 text-xl font-semibold ${scoreColor}`}>
-                      {scoreLabel}
-                    </p>
+                    <p className={`mt-4 text-xl font-semibold ${scoreColor}`}>{scoreLabel}</p>
                   </div>
 
                   <div className="mt-8 grid gap-4 md:grid-cols-3">
-                    <div className="rounded-xl border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">Strategy Fit</p>
-                      <p className="mt-2 text-2xl font-semibold">
-                        {strategyFit} / 100
-                      </p>
-                      <p className="mt-2 text-sm text-slate-600">
-                        {strategy || "Undecided"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">
-                        Investment Quality
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold">
-                        {investmentQuality} / 100
-                      </p>
-                      <p className="mt-2 text-sm text-slate-600">
-                        Guide price appears competitive.
-                      </p>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-200 bg-white p-4">
-                      <p className="text-sm text-slate-500">Risk Level</p>
-                      <p className="mt-2 text-2xl font-semibold">
-                        {riskLevel} / 100
-                      </p>
-                      <p className="mt-2 text-sm text-slate-600">
-                        Medium legal and execution risk.
-                      </p>
-                    </div>
+                    <MetricCard label="Strategy Fit" value={`${strategyFit} / 100`} helper={strategy || "Undecided"} />
+                    <MetricCard label="Investment Quality" value={`${investmentQuality} / 100`} helper="Guide price appears competitive." />
+                    <MetricCard label="Risk Level" value={`${riskLevel} / 100`} helper="Based on condition and execution risk." />
                   </div>
                 </div>
 
                 <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
-                  <h3 className="text-xl font-semibold">
-                    Renovation Cost Estimate
-                  </h3>
-
+                  <h3 className="text-xl font-semibold">Renovation Cost Estimate</h3>
                   <div className="mt-4 grid gap-4 md:grid-cols-3">
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">Condition</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {conditionLevel}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">Low Estimate</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {formatPrice(refurbLow)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">High Estimate</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {formatPrice(refurbHigh)}
-                      </p>
-                    </div>
+                    <MetricCard label="Condition" value={conditionLevel} />
+                    <MetricCard label="Low Estimate" value={formatPrice(refurbLow)} />
+                    <MetricCard label="High Estimate" value={formatPrice(refurbHigh)} />
                   </div>
                 </div>
 
                 {showBuyToLetPanel && (
-                  <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
-                    <h3 className="text-xl font-semibold">
-                      Buy to Let Snapshot
-                    </h3>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">Monthly Rent</p>
-                        <p className="mt-1 text-xl font-semibold text-slate-900">
-                          {monthlyRent
-                            ? `${formatPrice(monthlyRent)}/mo`
-                            : "N/A"}
-                        </p>
-                      </div>
-
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">Annual Rent</p>
-                        <p className="mt-1 text-xl font-semibold text-slate-900">
-                          {annualRent ? formatPrice(annualRent) : "N/A"}
-                        </p>
-                      </div>
-
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">Gross Yield</p>
-                        <p className="mt-1 text-xl font-semibold text-slate-900">
-                          {grossYield ? `${grossYield.toFixed(1)}%` : "N/A"}
-                        </p>
-                      </div>
-
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">Refurb Cost</p>
-                        <p className="mt-1 text-xl font-semibold text-slate-900">
-                          {formatPrice(refurbLow)} – {formatPrice(refurbHigh)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">LotWise Verdict</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {buyToLetVerdict}
-                      </p>
-                    </div>
-                  </div>
+                  <BuyToLetPanel
+                    annualRent={annualRent}
+                    grossYield={grossYield}
+                    yieldLabel={yieldLabel}
+                    buyToLetVerdict={buyToLetVerdict}
+                    formatPrice={formatPrice}
+                    monthlyRent={monthlyRent}
+                    refurbLow={refurbLow}
+                    refurbHigh={refurbHigh}
+                  />
                 )}
 
                 {showHomeBuyerPanel && (
-                  <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
-                    <h3 className="text-xl font-semibold">
-                      First-Time Buyer / New Home Snapshot
-                    </h3>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">Mortgage Rate</p>
-                        <p className="mt-1 text-xl font-semibold text-slate-900">
-                          {mortgageRate.toFixed(1)}%
-                        </p>
-                      </div>
-
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">Deposit</p>
-                        <p className="mt-1 text-xl font-semibold text-slate-900">
-                          {formatPrice(depositAmount)}
-                        </p>
-                      </div>
-
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">Stamp Duty</p>
-                        <p className="mt-1 text-xl font-semibold text-slate-900">
-                          {formatPrice(stampDutyEstimate)}
-                        </p>
-                      </div>
-
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">
-                          Est. Monthly Mortgage
-                        </p>
-                        <p className="mt-1 text-xl font-semibold text-slate-900">
-                          {estimatedMonthlyMortgage
-                            ? `${formatPrice(estimatedMonthlyMortgage)}/mo`
-                            : "N/A"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">LotWise Verdict</p>
-                      <p className="mt-1 text-xl font-semibold text-slate-900">
-                        {homeBuyerVerdict}
-                      </p>
-                    </div>
-                  </div>
+                  <HomeBuyerPanel
+                    mortgageRate={mortgageRate}
+                    depositAmount={depositAmount}
+                    stampDutyEstimate={stampDutyEstimate}
+                    estimatedMonthlyMortgage={estimatedMonthlyMortgage}
+                    homeBuyerVerdict={homeBuyerVerdict}
+                    formatPrice={formatPrice}
+                  />
                 )}
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
-                <div className="rounded-xl border border-slate-200 p-6">
-                  <h3 className="text-xl font-semibold">Key Risks</h3>
-                  <ul className="mt-4 space-y-3 text-sm text-slate-600">
-                    <li>• Short lease may affect mortgage options</li>
-                    <li>• Legal review recommended</li>
-                    <li>• Budget carefully for works and timelines</li>
-                  </ul>
-                </div>
-
-                <div className="rounded-xl border border-slate-200 p-6">
-                  <h3 className="text-xl font-semibold">Opportunities</h3>
-                  <ul className="mt-4 space-y-3 text-sm text-slate-600">
-                    <li>• Potential upside based on local demand</li>
-                    <li>• Strong strategy fit for your selected route</li>
-                    <li>• Good candidate for improvement works</li>
-                  </ul>
-                </div>
+                <ReportList title="Key Risks" items={["Short lease may affect mortgage options", "Legal review recommended", "Budget carefully for works and timelines"]} />
+                <ReportList title="Opportunities" items={["Potential upside based on local demand", "Strong strategy fit for your selected route", "Good candidate for improvement works"]} />
 
                 <div className="rounded-xl border border-slate-200 p-6">
                   <h3 className="text-xl font-semibold">Comparable Sales</h3>
                   <div className="mt-4 space-y-4 text-sm text-slate-600">
-                    <div className="rounded-lg bg-slate-50 p-4">
-                      <p className="font-medium text-slate-900">
-                        12 Oak Road
-                      </p>
-                      <p>Recent sale: £420,000</p>
-                    </div>
-                    <div className="rounded-lg bg-slate-50 p-4">
-                      <p className="font-medium text-slate-900">
-                        7 High Street
-                      </p>
-                      <p>Recent sale: £405,000</p>
-                    </div>
-                    <div className="rounded-lg bg-slate-50 p-4">
-                      <p className="font-medium text-slate-900">
-                        14 Park Lane
-                      </p>
-                      <p>Recent sale: £438,000</p>
-                    </div>
+                    {[
+                      ["12 Oak Road", "£420,000"],
+                      ["7 High Street", "£405,000"],
+                      ["14 Park Lane", "£438,000"],
+                    ].map(([addr, price]) => (
+                      <div key={addr} className="rounded-lg bg-slate-50 p-4">
+                        <p className="font-medium text-slate-900">{addr}</p>
+                        <p>Recent sale: {price}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 p-6">
-                  <h3 className="text-xl font-semibold">
-                    Recommended Professionals
-                  </h3>
-                  <ul className="mt-4 space-y-3 text-sm text-slate-600">
-                    <li>• Solicitor experienced with property purchases</li>
-                    <li>• Surveyor for condition review</li>
-                    <li>• Builder for refurbishment pricing</li>
-                    <li>• Mortgage broker for finance options</li>
-                  </ul>
-                </div>
+                <ReportList title="Recommended Professionals" items={["Solicitor experienced with property purchases", "Surveyor for condition review", "Builder for refurbishment pricing", "Mortgage broker for finance options"]} />
               </div>
 
               <div className="rounded-xl border border-slate-200 p-6">
@@ -1004,25 +679,15 @@ export default function AnalysePage() {
               </div>
 
               <div className="flex flex-wrap gap-4">
-                <a
-                  href={requestHelpHref}
-                  className="inline-block rounded-md bg-black px-6 py-3 text-white"
-                >
+                <a href={requestHelpHref} className="inline-block rounded-md bg-black px-6 py-3 text-white">
                   Get Help With This Property
                 </a>
 
-                <button
-                  type="button"
-                  onClick={() => setStep(3)}
-                  className="rounded-md border border-slate-300 px-6 py-3"
-                >
+                <button type="button" onClick={() => setStep(3)} className="rounded-md border border-slate-300 px-6 py-3">
                   Back
                 </button>
 
-                <button
-                  type="button"
-                  className="rounded-md bg-slate-800 px-6 py-3 text-white"
-                >
+                <button type="button" onClick={handleSaveDeal} className="rounded-md bg-slate-800 px-6 py-3 text-white">
                   Save Deal
                 </button>
               </div>
@@ -1031,5 +696,279 @@ export default function AnalysePage() {
         </div>
       </section>
     </main>
+  );
+}
+
+function InfoCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <p className="text-sm text-slate-500">{label}</p>
+      <p className="mt-1 font-medium text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  helper,
+}: {
+  label: string;
+  value: string;
+  helper?: string;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <p className="text-sm text-slate-500">{label}</p>
+      <p className="mt-1 text-xl font-semibold text-slate-900">{value}</p>
+      {helper && <p className="mt-2 text-sm text-slate-600">{helper}</p>}
+    </div>
+  );
+}
+
+function Input({
+  label,
+  type,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  type: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-medium">{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-md border border-slate-300 px-4 py-3"
+      />
+    </div>
+  );
+}
+
+function RenovationEstimator({
+  conditionLevel,
+  setConditionLevel,
+  formatPrice,
+  refurbLow,
+  refurbHigh,
+}: {
+  conditionLevel: ConditionLevel;
+  setConditionLevel: (value: ConditionLevel) => void;
+  formatPrice: (value: number | string | undefined) => string;
+  refurbLow: number;
+  refurbHigh: number;
+}) {
+  return (
+    <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-500">
+        Renovation Cost Estimator
+      </p>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-3">
+        {["Good condition", "Needs updating", "Full refurbishment"].map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => setConditionLevel(option as ConditionLevel)}
+            className={`rounded-md border px-4 py-3 text-left ${
+              conditionLevel === option
+                ? "border-slate-900 bg-slate-900 text-white"
+                : "border-slate-300 bg-white"
+            }`}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <MetricCard label="Estimated Range" value={`${formatPrice(refurbLow)} – ${formatPrice(refurbHigh)}`} />
+        <MetricCard label="Condition Assumption" value={conditionLevel} />
+      </div>
+    </div>
+  );
+}
+
+function BuyToLetPanel({
+  editable = false,
+  manualRent = "",
+  setManualRent,
+  suggestedMonthlyRent = 0,
+  monthlyRent,
+  annualRent,
+  grossYield,
+  yieldLabel,
+  buyToLetVerdict,
+  formatPrice,
+  refurbLow,
+  refurbHigh,
+}: {
+  editable?: boolean;
+  manualRent?: string;
+  setManualRent?: (value: string) => void;
+  suggestedMonthlyRent?: number;
+  monthlyRent?: number;
+  annualRent: number;
+  grossYield: number;
+  yieldLabel: string;
+  buyToLetVerdict: string;
+  formatPrice: (value: number | string | undefined) => string;
+  refurbLow?: number;
+  refurbHigh?: number;
+}) {
+  return (
+    <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-500">
+        Quick Deal Analysis
+      </p>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {editable ? (
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm text-slate-500">Monthly Rent</p>
+            <input
+              type="number"
+              step="50"
+              value={manualRent}
+              onChange={(e) => setManualRent?.(e.target.value)}
+              placeholder={String(suggestedMonthlyRent || "")}
+              className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2"
+            />
+          </div>
+        ) : (
+          <MetricCard label="Monthly Rent" value={monthlyRent ? `${formatPrice(monthlyRent)}/mo` : "N/A"} />
+        )}
+
+        <MetricCard label="Annual Rent" value={annualRent ? formatPrice(annualRent) : "N/A"} />
+        <MetricCard label="Gross Yield" value={grossYield ? `${grossYield.toFixed(1)}%` : "N/A"} />
+        <MetricCard label="Yield Rating" value={yieldLabel} />
+      </div>
+
+      {refurbLow && refurbHigh && (
+        <div className="mt-4">
+          <MetricCard label="Refurb Cost" value={`${formatPrice(refurbLow)} – ${formatPrice(refurbHigh)}`} />
+        </div>
+      )}
+
+      <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
+        <p className="text-sm text-slate-500">LotWise Verdict</p>
+        <p className="mt-1 text-xl font-semibold text-slate-900">{buyToLetVerdict}</p>
+      </div>
+    </div>
+  );
+}
+
+function HomeBuyerPanel({
+  editable = false,
+  mortgageRate,
+  setMortgageRate,
+  depositPercent,
+  setDepositPercent,
+  mortgageTerm,
+  setMortgageTerm,
+  depositAmount,
+  stampDutyEstimate,
+  estimatedMonthlyMortgage,
+  homeBuyerVerdict,
+  formatPrice,
+}: {
+  editable?: boolean;
+  mortgageRate: number;
+  setMortgageRate?: (value: number) => void;
+  depositPercent?: number;
+  setDepositPercent?: (value: number) => void;
+  mortgageTerm?: number;
+  setMortgageTerm?: (value: number) => void;
+  depositAmount?: number;
+  stampDutyEstimate: number;
+  estimatedMonthlyMortgage: number;
+  homeBuyerVerdict: string;
+  formatPrice: (value: number | string | undefined) => string;
+}) {
+  return (
+    <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-500">
+        Home Buyer Snapshot
+      </p>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {editable ? (
+          <>
+            <EditNumber label="Mortgage Rate" value={mortgageRate} step="0.1" onChange={(v) => setMortgageRate?.(v)} />
+            <EditNumber label="Deposit %" value={depositPercent ?? 10} step="1" onChange={(v) => setDepositPercent?.(v)} />
+            <EditNumber label="Mortgage Term" value={mortgageTerm ?? 30} step="1" onChange={(v) => setMortgageTerm?.(v)} />
+          </>
+        ) : (
+          <>
+            <MetricCard label="Mortgage Rate" value={`${mortgageRate.toFixed(1)}%`} />
+            <MetricCard label="Deposit" value={formatPrice(depositAmount || 0)} />
+            <MetricCard label="Stamp Duty" value={formatPrice(stampDutyEstimate)} />
+          </>
+        )}
+
+        <MetricCard
+          label="Est. Monthly Mortgage"
+          value={estimatedMonthlyMortgage ? `${formatPrice(estimatedMonthlyMortgage)}/mo` : "N/A"}
+        />
+      </div>
+
+      {editable && (
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <MetricCard label="Deposit Amount" value={formatPrice(depositAmount || 0)} />
+          <MetricCard label="Stamp Duty Estimate" value={formatPrice(stampDutyEstimate)} />
+        </div>
+      )}
+
+      <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
+        <p className="text-sm text-slate-500">LotWise Verdict</p>
+        <p className="mt-1 text-xl font-semibold text-slate-900">{homeBuyerVerdict}</p>
+      </div>
+    </div>
+  );
+}
+
+function EditNumber({
+  label,
+  value,
+  step,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  step: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <p className="text-sm text-slate-500">{label}</p>
+      <input
+        type="number"
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value) || 0)}
+        className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2"
+      />
+    </div>
+  );
+}
+
+function ReportList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded-xl border border-slate-200 p-6">
+      <h3 className="text-xl font-semibold">{title}</h3>
+      <ul className="mt-4 space-y-3 text-sm text-slate-600">
+        {items.map((item) => (
+          <li key={item}>• {item}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
